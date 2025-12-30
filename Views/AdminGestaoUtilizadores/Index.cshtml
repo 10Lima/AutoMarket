@@ -1,0 +1,137 @@
+﻿@model List<AutoMarket.Models.Market.Utilizador>
+
+@{
+    ViewData["Title"] = "Utilizadores";
+    var filtroAtual = (ViewData["FiltroAtual"] as string) ?? "";
+    var adminFiltroAtual = (ViewData["AdminFiltroAtual"] as string) ?? "todos";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<form id="filtroForm"
+      method="get"
+      asp-controller="AdminGestaoUtilizadores"
+      asp-action="Lista"
+      data-ajax="true"
+      data-ajax-method="get"
+      data-ajax-mode="replace"
+      data-ajax-update="#utilizadoresArea"
+      class="row g-2 align-items-end mb-3">
+
+    <div class="col-md-4">
+        <label class="form-label" for="filtro">Pesquisar</label>
+        <input class="form-control" id="filtro" name="filtro"
+               value="@filtroAtual"
+               placeholder="ID / username / email" />
+    </div>
+
+    <!-- ✅ NOVO: Filtro por tipo de utilizador -->
+    <div class="col-md-3">
+        <label class="form-label" for="adminFiltro">Tipo</label>
+        <select class="form-select" id="adminFiltro" name="adminFiltro">
+            <option value="todos" selected="@(adminFiltroAtual == "todos")">Todos</option>
+            <option value="admins" selected="@(adminFiltroAtual == "admins")">Só admins</option>
+            <option value="nao_admins" selected="@(adminFiltroAtual == "nao_admins")">Só não admins</option>
+        </select>
+    </div>
+</form>
+
+<div id="utilizadoresArea">
+    <partial name="_UtilizadoresTable" model="Model" />
+</div>
+
+<partial name="_MotivoAcaoAdminModal" />
+
+@section Scripts {
+    <script>
+        (function () {
+            const formFiltro = document.getElementById('filtroForm');
+            const filtro = document.getElementById('filtro');
+            const adminFiltro = document.getElementById('adminFiltro');
+            const modalForm = document.getElementById('motivoForm');
+
+            if (!formFiltro) return;
+
+            function debounce(fn, delay) {
+                let t = null;
+                return function () {
+                    clearTimeout(t);
+                    t = setTimeout(fn, delay);
+                };
+            }
+
+            const submitNow = function () {
+                if (formFiltro.requestSubmit) formFiltro.requestSubmit();
+                else $(formFiltro).submit();
+            };
+
+            const submitDebounced = debounce(submitNow, 350);
+
+            // ✅ Dropdown: submit imediato
+            if (adminFiltro) adminFiltro.addEventListener('change', submitNow);
+
+            // Input pesquisa: debounce
+            if (filtro) filtro.addEventListener('input', submitDebounced);
+
+            if (modalForm) {
+                modalForm.addEventListener('submit', function () {
+                    let hidden = modalForm.querySelector('input[name="filtroAtual"]');
+                    if (!hidden) {
+                        hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = 'filtroAtual';
+                        modalForm.appendChild(hidden);
+                    }
+                    hidden.value = filtro ? (filtro.value || '') : '';
+                });
+            }
+
+            // Delegação de cliques (mantém como está)
+            document.addEventListener('click', function (e) {
+                const btnB = e.target.closest('.btn-bloquear');
+                if (btnB) {
+                    const id = btnB.getAttribute('data-id');
+                    if (typeof abrirMotivoAdmin !== "function") {
+                        console.error("abrirMotivoAdmin não está definido");
+                        return;
+                    }
+                    abrirMotivoAdmin('bloquear', '@Url.Action("Bloquear", "AdminGestaoUtilizadores")', id, submitNow);
+                    return;
+                }
+
+                const btnD = e.target.closest('.btn-desbloquear');
+                if (btnD) {
+                    const id = btnD.getAttribute('data-id');
+                    if (typeof abrirMotivoAdmin !== "function") {
+                        console.error("abrirMotivoAdmin não está definido");
+                        return;
+                    }
+                    abrirMotivoAdmin('desbloquear', '@Url.Action("Desbloquear", "AdminGestaoUtilizadores")', id, submitNow);
+                    return;
+                }
+
+                const btnR = e.target.closest('.btn-removeradmin');
+                if (btnR) {
+                    const id = btnR.getAttribute('data-id');
+                    if (typeof abrirMotivoAdmin !== "function") {
+                        console.error("abrirMotivoAdmin não está definido");
+                        return;
+                    }
+                    abrirMotivoAdmin('remover_admin', '@Url.Action("RemoverAdmin", "AdminGestaoUtilizadores")', id, submitNow);
+                    return;
+                }
+
+                const btnRec = e.target.closest('.btn-recuperaradmin');
+                if (btnRec) {
+                    const id = btnRec.getAttribute('data-id');
+                    if (typeof abrirMotivoAdmin !== "function") {
+                        console.error("abrirMotivoAdmin não está definido");
+                        return;
+                    }
+                    abrirMotivoAdmin('recuperar_admin', '@Url.Action("RecuperarAdmin", "AdminGestaoUtilizadores")', id, submitNow);
+                    return;
+                }
+            });
+        })();
+    </script>
+}

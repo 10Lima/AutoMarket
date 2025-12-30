@@ -1,0 +1,140 @@
+﻿@page
+@model AutoMarket.Areas.Identity.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = Model.IsAdminRegistration ? "Registar administrador" : "Registar";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-success">@Model.StatusMessage</div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <form id="registerForm"
+              asp-route-returnUrl="@Model.ReturnUrl"
+              asp-route-admin="@Model.IsAdminRegistration"
+              method="post">
+
+            <h2>@(Model.IsAdminRegistration ? "Criar conta de administrador" : "Criar conta")</h2>
+            <hr />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <!-- Identity -->
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Username" class="form-control" autocomplete="username" aria-required="true" />
+                <label asp-for="Input.Username"></label>
+                <span asp-validation-for="Input.Username" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Email" class="form-control" autocomplete="email" aria-required="true" />
+                <label asp-for="Input.Email"></label>
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" />
+                <label asp-for="Input.Password"></label>
+                <span asp-validation-for="Input.Password" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" />
+                <label asp-for="Input.ConfirmPassword"></label>
+                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+            </div>
+
+            <!-- Marketplace -->
+            <h4 class="mt-4">Dados do perfil</h4>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Nome" class="form-control" aria-required="true" />
+                <label asp-for="Input.Nome"></label>
+                <span asp-validation-for="Input.Nome" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Input.CanalNotificacaoPreferido" class="form-label"></label>
+                <select asp-for="Input.CanalNotificacaoPreferido" class="form-select">
+                    <option value="email">email</option>
+                    <option value="sms">sms</option>
+                </select>
+                <span asp-validation-for="Input.CanalNotificacaoPreferido" class="text-danger"></span>
+            </div>
+
+            <div class="form-check mb-3">
+                <input asp-for="Input.NotificarNovidades" class="form-check-input" />
+                <label asp-for="Input.NotificarNovidades" class="form-check-label"></label>
+                <span asp-validation-for="Input.NotificarNovidades" class="text-danger"></span>
+            </div>
+
+            <h4 class="mt-4">Morada</h4>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Endereco" class="form-control" aria-required="true" />
+                <label asp-for="Input.Endereco"></label>
+                <span asp-validation-for="Input.Endereco" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Numero" class="form-control" />
+                <label asp-for="Input.Numero"></label>
+                <span asp-validation-for="Input.Numero" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.CodigoPostal" class="form-control" placeholder="1234-567" aria-required="true" />
+                <label asp-for="Input.CodigoPostal"></label>
+                <span asp-validation-for="Input.CodigoPostal" class="text-danger"></span>
+            </div>
+
+            <h4 class="mt-4">Contactos</h4>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Contacto1Valor" class="form-control" aria-required="true" />
+                <label asp-for="Input.Contacto1Valor"></label>
+                <span asp-validation-for="Input.Contacto1Valor" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Contacto2Valor" class="form-control" />
+                <label asp-for="Input.Contacto2Valor"></label>
+                <span asp-validation-for="Input.Contacto2Valor" class="text-danger"></span>
+            </div>
+
+            <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary">
+                @(Model.IsAdminRegistration ? "Registar administrador" : "Registar")
+            </button>
+        </form>
+    </div>
+
+    <div class="col-md-6">
+        <section>
+            <h3>Ou usa um serviço externo</h3>
+            <hr />
+
+            @if (!Model.IsAdminRegistration && Model.ExternalLogins?.Count > 0)
+            {
+                <form asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
+                    <div>
+                        <p>
+                            @foreach (var provider in Model.ExternalLogins)
+                            {
+                                <button type="submit" class="btn btn-outline-primary" name="provider" value="@provider.Name">
+                                    @provider.DisplayName
+                                </button>
+                            }
+                        </p>
+                    </div>
+                </form>
+            }
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

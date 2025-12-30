@@ -1,0 +1,84 @@
+﻿@model List<AutoMarket.Models.Market.Ace_Admin_Acao>
+
+@{
+    ViewData["Title"] = "Histórico de ações";
+    var tipoAtual = (ViewData["TipoAtual"] as string) ?? "todas";
+    var adminAtual = (ViewData["AdminAtual"] as string) ?? "";
+    var utilizadorAtual = (ViewData["UtilizadorAtual"] as string) ?? "";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<form id="filtroForm"
+      method="get"
+      asp-controller="AdminAcoes"
+      asp-action="Lista"
+      data-ajax="true"
+      data-ajax-method="get"
+      data-ajax-mode="replace"
+      data-ajax-update="#acoesArea"
+      class="row g-2 align-items-end mb-3">
+
+    <div class="col-md-3">
+        <label class="form-label" for="tipo">Tipo de ação</label>
+        <select class="form-select" id="tipo" name="tipo">
+            <option value="todas" selected="@(tipoAtual == "todas")">Todas</option>
+            <option value="aprovar_vendedor" selected="@(tipoAtual == "aprovar_vendedor")">aprovar_vendedor</option>
+            <option value="rejeitar_vendedor" selected="@(tipoAtual == "rejeitar_vendedor")">rejeitar_vendedor</option>
+            <!-- ✅ NOVOS -->
+            <option value="bloquear" selected="@(tipoAtual == "bloquear")">bloquear</option>
+            <option value="desbloquear" selected="@(tipoAtual == "desbloquear")">desbloquear</option>
+            <option value="remover_admin" selected="@(tipoAtual == "remover_admin")">remover_admin</option>
+            <option value="recuperar_admin" selected="@(tipoAtual == "recuperar_admin")">recuperar_admin</option>
+        </select>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label" for="admin">Admin (ID/username/email)</label>
+        <input class="form-control" id="admin" name="admin" value="@adminAtual" />
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label" for="utilizador">Utilizador (ID/username/email)</label>
+        <input class="form-control" id="utilizador" name="utilizador" value="@utilizadorAtual" />
+    </div>
+</form>
+
+<div id="acoesArea">
+    <partial name="_AcoesTable" model="Model" />
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const form = document.getElementById('filtroForm');
+            const tipo = document.getElementById('tipo');
+            const admin = document.getElementById('admin');
+            const utilizador = document.getElementById('utilizador');
+            if (!form) return;
+
+            // dropdown: muda e atualiza logo
+            if (tipo) {
+                tipo.addEventListener('change', function () {
+                    $(form).submit();
+                });
+            }
+
+            // inputs: debounce (não fazer request a cada tecla)
+            function debounce(fn, delay) {
+                let t = null;
+                return function () {
+                    clearTimeout(t);
+                    t = setTimeout(fn, delay);
+                };
+            }
+
+            const submitDebounced = debounce(function () {
+                $(form).submit();
+            }, 400);
+
+            if (admin) admin.addEventListener('input', submitDebounced);
+            if (utilizador) utilizador.addEventListener('input', submitDebounced);
+        })();
+    </script>
+}

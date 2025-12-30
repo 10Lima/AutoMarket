@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = "Acesso bloqueado";
+    var motivo = ViewData["Motivo"] as string ?? "Motivo não indicado.";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mb-4">
+                <i class="bi bi-shield-lock text-danger"></i> @ViewData["Title"]
+            </h1>
+
+            <div class="alert alert-danger">
+                <h5 class="alert-heading">A tua conta encontra-se bloqueada.</h5>
+                <hr />
+                <p class="mb-0"><strong>Motivo:</strong> @motivo</p>
+            </div>
+
+            <div class="text-muted small">
+                Se consideras que este bloqueio é indevido, contacta o suporte da plataforma.
+            </div>
+
+            <div class="mt-4">
+                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">
+                    Voltar à página inicial
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

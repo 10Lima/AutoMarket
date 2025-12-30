@@ -1,0 +1,554 @@
+﻿@{
+    ViewData["Title"] = "Carros";
+
+    var estado = (ViewBag.Estado as string) ?? "todos";
+    var q = (ViewBag.Q as string) ?? "";
+    var sort = (ViewBag.Sort as string) ?? "recent";
+
+    var marcas = ViewBag.Marcas as IEnumerable<AutoMarket.Models.Market.Marca> ?? Enumerable.Empty<AutoMarket.Models.Market.Marca>();
+}
+
+<div class="container-fluid mt-3">
+    <div class="row g-4">
+
+        <!-- FILTROS (esquerda) -->
+        <div class="col-12 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+
+                    <form asp-action="_CarrosLista" asp-controller="Anuncios" method="get"
+                          data-ajax="true"
+                          data-ajax-mode="replace"
+                          data-ajax-update="#resultados"
+                          id="filtrosForm">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden" name="estado" value="@estado" />
+                        <input type="hidden" name="sort" value="@sort" />
+
+                        <!-- MARCA -->
+                        <div class="mb-3">
+                            <label class="form-label">Marca</label>
+
+                            <input type="hidden" name="idMarca" id="idMarcaVal" value="@(ViewBag.IdMarca ?? "")" />
+
+                            <div class="dropdown w-100">
+                                <button class="btn btn-outline-secondary w-100 text-start dropdown-toggle"
+                                        type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                        id="marcaBtn">
+                                    Selecionar...
+                                </button>
+
+                                <div class="dropdown-menu w-100 p-2" style="max-height: 320px; overflow:auto;">
+                                    <input class="form-control mb-2" type="text" placeholder="Pesquisar..." data-filter="marca" />
+                                    <div id="marcaList" class="list-group list-group-flush">
+                                        <button type="button" class="list-group-item list-group-item-action" data-clear="marca">— Limpar —</button>
+                                        @foreach (var m in marcas)
+                                        {
+                                            <button type="button"
+                                                    class="list-group-item list-group-item-action"
+                                                    data-marca="@m.id_marca"
+                                                    data-text="@m.nome">
+                                                @m.nome
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MODELO -->
+                        <div class="mb-3">
+                            <label class="form-label">Modelo</label>
+
+                            <input type="hidden" name="idModelo" id="idModeloVal" value="@(ViewBag.IdModelo ?? "")" />
+
+                            <div class="dropdown w-100">
+                                <button class="btn btn-outline-secondary w-100 text-start dropdown-toggle"
+                                        type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                        id="modeloBtn" disabled>
+                                    Selecionar...
+                                </button>
+
+                                <div class="dropdown-menu w-100 p-2" style="max-height: 320px; overflow:auto;">
+                                    <input class="form-control mb-2" type="text" placeholder="Pesquisar..." data-filter="modelo" />
+                                    <div id="modeloList" class="list-group list-group-flush">
+                                        <button type="button" class="list-group-item list-group-item-action" data-clear="modelo">— Limpar —</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SUB-MODELO -->
+                        <div class="mb-3">
+                            <label class="form-label">Sub-modelo</label>
+
+                            <input type="hidden" name="idSubModelo" id="idSubModeloVal" value="@(ViewBag.IdSubModelo ?? "")" />
+
+                            <div class="dropdown w-100">
+                                <button class="btn btn-outline-secondary w-100 text-start dropdown-toggle"
+                                        type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                        id="subModeloBtn" disabled>
+                                    Selecionar...
+                                </button>
+
+                                <div class="dropdown-menu w-100 p-2" style="max-height: 320px; overflow:auto;">
+                                    <input class="form-control mb-2" type="text" placeholder="Pesquisar..." data-filter="submodelo" />
+                                    <div id="subModeloList" class="list-group list-group-flush">
+                                        <button type="button" class="list-group-item list-group-item-action" data-clear="submodelo">— Limpar —</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CATEGORIA -->
+                        <div class="mb-3">
+                            <label class="form-label">Categoria</label>
+
+                            <input type="hidden" name="categoria" id="categoriaVal" value="@(ViewBag.Categoria ?? "")" />
+
+                            <div class="dropdown w-100">
+                                <button class="btn btn-outline-secondary w-100 text-start dropdown-toggle"
+                                        type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                        id="categoriaBtn">
+                                    @(string.IsNullOrWhiteSpace((string?)ViewBag.Categoria) ? "Selecionar..." : (string)ViewBag.Categoria)
+                                </button>
+
+                                <div class="dropdown-menu w-100 p-2" style="max-height: 320px; overflow:auto;">
+                                    <input class="form-control mb-2" type="text" placeholder="Pesquisar..." data-filter="categoria" />
+                                    <div id="categoriaList" class="list-group list-group-flush">
+                                        <button type="button" class="list-group-item list-group-item-action" data-clear="categoria">— Limpar —</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COMBUSTÍVEL -->
+                        <div class="mb-3">
+                            <label class="form-label">Combustível</label>
+
+                            <input type="hidden" name="combustivel" id="combustivelVal" value="@(ViewBag.Combustivel ?? "")" />
+
+                            <div class="dropdown w-100">
+                                <button class="btn btn-outline-secondary w-100 text-start dropdown-toggle"
+                                        type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                        id="combustivelBtn">
+                                    @(string.IsNullOrWhiteSpace((string?)ViewBag.Combustivel) ? "Selecionar..." : (string)ViewBag.Combustivel)
+                                </button>
+
+                                <div class="dropdown-menu w-100 p-2" style="max-height: 320px; overflow:auto;">
+                                    <input class="form-control mb-2" type="text" placeholder="Pesquisar..." data-filter="combustivel" />
+                                    <div id="combustivelList" class="list-group list-group-flush">
+                                        <button type="button" class="list-group-item list-group-item-action" data-clear="combustivel">— Limpar —</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CAIXA -->
+                        <div class="mb-3">
+                            <label class="form-label">Caixa</label>
+
+                            <input type="hidden" name="caixa" id="caixaVal" value="@(ViewBag.Caixa ?? "")" />
+
+                            <div class="dropdown w-100">
+                                <button class="btn btn-outline-secondary w-100 text-start dropdown-toggle"
+                                        type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                        id="caixaBtn">
+                                    @(string.IsNullOrWhiteSpace((string?)ViewBag.Caixa) ? "Selecionar..." : (string)ViewBag.Caixa)
+                                </button>
+
+                                <div class="dropdown-menu w-100 p-2" style="max-height: 320px; overflow:auto;">
+                                    <input class="form-control mb-2" type="text" placeholder="Pesquisar..." data-filter="caixa" />
+                                    <div id="caixaList" class="list-group list-group-flush">
+                                        <button type="button" class="list-group-item list-group-item-action" data-clear="caixa">— Limpar —</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Preço de</label>
+                                <input type="number" class="form-control" name="precoDe" value="@(ViewBag.PrecoDe ?? "")" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Preço até</label>
+                                <input type="number" class="form-control" name="precoAte" value="@(ViewBag.PrecoAte ?? "")" />
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Ano de</label>
+                                <input type="number" class="form-control" name="anoDe" value="@(ViewBag.AnoDe ?? "")" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Ano até</label>
+                                <input type="number" class="form-control" name="anoAte" value="@(ViewBag.AnoAte ?? "")" />
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label">KM de</label>
+                                <input type="number" class="form-control" name="kmDe" value="@(ViewBag.KmDe ?? "")" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">KM até</label>
+                                <input type="number" class="form-control" name="kmAte" value="@(ViewBag.KmAte ?? "")" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Procurar (só título)</label>
+                            <div class="input-group">
+                                <input class="form-control" name="q" value="@q" placeholder="Procurar..." />
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-outline-secondary w-100">Aplicar</button>
+
+                            @if (User.Identity?.IsAuthenticated ?? false)
+                            {
+                                <button type="button" class="btn btn-outline-primary w-100" id="btnGuardarFiltros">
+                                    Guardar Filtros
+                                </button>
+
+                                <a class="btn btn-outline-secondary w-100" asp-action="MeusFiltros" asp-controller="Anuncios">
+                                    Meus Filtros
+                                </a>
+                            }
+                            else
+                            {
+                                <a class="btn btn-outline-primary w-100"
+                                   asp-area="Identity" asp-page="/Account/Login"
+                                   asp-route-returnUrl="@Url.Action("Carros","Anuncios")">
+                                    Guardar Filtros
+                                </a>
+                            }
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- LISTA (direita) -->
+        <div class="col-12 col-lg-9">
+            <h3 class="mb-2">Carros</h3>
+
+            <div id="resultados">
+                <div class="text-center text-muted py-4">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">A carregar...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
+
+    <script>
+        $(function () {
+            $('#filtrosForm').trigger('submit');
+
+            function bindResultados() {
+                $('#resultados').find('#sortSelect').off('change').on('change', function () {
+                    $('input[name="sort"]').val(this.value);
+                    $('#filtrosForm').trigger('submit');
+                });
+
+                $('#resultados').find('[data-estado]').off('click').on('click', function (e) {
+                    e.preventDefault();
+                    $('input[name="estado"]').val($(this).data('estado'));
+                    $('#filtrosForm').trigger('submit');
+                });
+            }
+
+            $(document).on('ajaxComplete', function (e, xhr, settings) {
+                if (settings && settings.url && settings.url.includes('/Anuncios/_CarrosLista')) {
+                    bindResultados();
+                }
+            });
+
+            function wireSearch(inputSelector, listSelector) {
+                $(document).on('input', inputSelector, function () {
+                    const term = (this.value || '').toLowerCase();
+                    $(this).closest('.dropdown-menu').find(listSelector + ' .list-group-item').each(function () {
+                        const t = ($(this).text() || '').toLowerCase();
+                        if (t.startsWith('—')) return;
+                        $(this).toggle(t.includes(term));
+                    });
+                });
+            }
+
+            wireSearch('input[data-filter]', '.list-group');
+
+            function renderList(containerId, btnId, hiddenId, items) {
+                const $list = $('#' + containerId);
+                $list.find('button[data-val]').remove();
+
+                items.forEach(val => {
+                    const $b = $('<button type="button" class="list-group-item list-group-item-action">')
+                        .attr('data-val', val)
+                        .text(val)
+                        .on('click', function () {
+                            $('#' + hiddenId).val(val);
+                            $('#' + btnId).text(val);
+                            $('#filtrosForm').trigger('submit');
+                        });
+
+                    $list.append($b);
+                });
+            }
+
+            async function loadStringList(url, containerId, btnId, hiddenId) {
+                const res = await fetch(url);
+                const items = await res.json();
+                renderList(containerId, btnId, hiddenId, items);
+
+                const current = $('#' + hiddenId).val();
+                if (current) $('#' + btnId).text(current);
+            }
+
+            $(document).on('click', '[data-clear="categoria"]', function () {
+                $('#categoriaVal').val('');
+                $('#categoriaBtn').text('Selecionar...');
+                $('#filtrosForm').trigger('submit');
+            });
+            $(document).on('click', '[data-clear="combustivel"]', function () {
+                $('#combustivelVal').val('');
+                $('#combustivelBtn').text('Selecionar...');
+                $('#filtrosForm').trigger('submit');
+            });
+            $(document).on('click', '[data-clear="caixa"]', function () {
+                $('#caixaVal').val('');
+                $('#caixaBtn').text('Selecionar...');
+                $('#filtrosForm').trigger('submit');
+            });
+
+            loadStringList("/Anuncios/GetCategorias", "categoriaList", "categoriaBtn", "categoriaVal");
+            loadStringList("/Anuncios/GetCombustiveis", "combustivelList", "combustivelBtn", "combustivelVal");
+            loadStringList("/Anuncios/GetCaixas", "caixaList", "caixaBtn", "caixaVal");
+
+            function setBtnText(btnId, text) {
+                $('#' + btnId).text(text || 'Selecionar...');
+            }
+
+            $(document).on('click', '[data-clear="marca"]', function () {
+                $('#idMarcaVal').val('');
+                $('#idModeloVal').val('');
+                $('#idSubModeloVal').val('');
+                setBtnText('marcaBtn', 'Selecionar...');
+                setBtnText('modeloBtn', 'Selecionar...');
+                setBtnText('subModeloBtn', 'Selecionar...');
+                $('#modeloBtn').prop('disabled', true);
+                $('#subModeloBtn').prop('disabled', true);
+                $('#modeloList').find('button[data-val]').remove();
+                $('#subModeloList').find('button[data-val]').remove();
+                $('#filtrosForm').trigger('submit');
+            });
+
+            $(document).on('click', '[data-clear="modelo"]', function () {
+                $('#idModeloVal').val('');
+                $('#idSubModeloVal').val('');
+                setBtnText('modeloBtn', 'Selecionar...');
+                setBtnText('subModeloBtn', 'Selecionar...');
+                $('#subModeloBtn').prop('disabled', true);
+                $('#subModeloList').find('button[data-val]').remove();
+                $('#filtrosForm').trigger('submit');
+            });
+
+            $(document).on('click', '[data-clear="submodelo"]', function () {
+                $('#idSubModeloVal').val('');
+                setBtnText('subModeloBtn', 'Selecionar...');
+                $('#filtrosForm').trigger('submit');
+            });
+
+            $(document).on('click', '#marcaList button[data-marca]', async function () {
+                const idMarca = $(this).data('marca');
+                const text = $(this).data('text');
+
+                $('#idMarcaVal').val(idMarca);
+                setBtnText('marcaBtn', text);
+
+                $('#idModeloVal').val('');
+                $('#idSubModeloVal').val('');
+                setBtnText('modeloBtn', 'Selecionar...');
+                setBtnText('subModeloBtn', 'Selecionar...');
+                $('#subModeloBtn').prop('disabled', true);
+                $('#subModeloList').find('button[data-val]').remove();
+
+                const res = await fetch(`/Anuncios/GetModelos?idMarca=${idMarca}`);
+                const list = await res.json();
+
+                const $list = $('#modeloList');
+                $list.find('button[data-val]').remove();
+
+                list.forEach(m => {
+                    const $b = $('<button type="button" class="list-group-item list-group-item-action">')
+                        .attr('data-val', m.id_modelo)
+                        .text(m.nome)
+                        .on('click', async function () {
+                            $('#idModeloVal').val(m.id_modelo);
+                            setBtnText('modeloBtn', m.nome);
+
+                            $('#idSubModeloVal').val('');
+                            setBtnText('subModeloBtn', 'Selecionar...');
+                            $('#subModeloList').find('button[data-val]').remove();
+
+                            const r2 = await fetch(`/Anuncios/GetSubModelos?idModelo=${m.id_modelo}`);
+                            const list2 = await r2.json();
+
+                            const $sub = $('#subModeloList');
+                            $sub.find('button[data-val]').remove();
+
+                            list2.forEach(s => {
+                                const $sb = $('<button type="button" class="list-group-item list-group-item-action">')
+                                    .attr('data-val', s.id_sub_modelo)
+                                    .text(s.nome)
+                                    .on('click', function () {
+                                        $('#idSubModeloVal').val(s.id_sub_modelo);
+                                        setBtnText('subModeloBtn', s.nome);
+                                        $('#filtrosForm').trigger('submit');
+                                    });
+
+                                $sub.append($sb);
+                            });
+
+                            $('#subModeloBtn').prop('disabled', false);
+                            $('#filtrosForm').trigger('submit');
+                        });
+
+                    $list.append($b);
+                });
+
+                $('#modeloBtn').prop('disabled', false);
+                $('#filtrosForm').trigger('submit');
+            });
+
+            (async function initMarcaModelo() {
+                const initialMarca = $('#idMarcaVal').val();
+                const initialModelo = $('#idModeloVal').val();
+                const initialSub = $('#idSubModeloVal').val();
+
+                if (initialMarca) {
+                    const $btn = $('#marcaList button[data-marca="' + initialMarca + '"]');
+                    if ($btn.length) setBtnText('marcaBtn', $btn.data('text'));
+
+                    const res = await fetch(`/Anuncios/GetModelos?idMarca=${initialMarca}`);
+                    const list = await res.json();
+
+                    const $list = $('#modeloList');
+                    $list.find('button[data-val]').remove();
+
+                    list.forEach(m => {
+                        const $b = $('<button type="button" class="list-group-item list-group-item-action">')
+                            .attr('data-val', m.id_modelo)
+                            .text(m.nome)
+                            .on('click', async function () {
+                                $('#idModeloVal').val(m.id_modelo);
+                                setBtnText('modeloBtn', m.nome);
+
+                                $('#idSubModeloVal').val('');
+                                setBtnText('subModeloBtn', 'Selecionar...');
+                                $('#subModeloList').find('button[data-val]').remove();
+
+                                const r2 = await fetch(`/Anuncios/GetSubModelos?idModelo=${m.id_modelo}`);
+                                const list2 = await r2.json();
+
+                                const $sub = $('#subModeloList');
+                                $sub.find('button[data-val]').remove();
+
+                                list2.forEach(s => {
+                                    const $sb = $('<button type="button" class="list-group-item list-group-item-action">')
+                                        .attr('data-val', s.id_sub_modelo)
+                                        .text(s.nome)
+                                        .on('click', function () {
+                                            $('#idSubModeloVal').val(s.id_sub_modelo);
+                                            setBtnText('subModeloBtn', s.nome);
+                                            $('#filtrosForm').trigger('submit');
+                                        });
+
+                                    $sub.append($sb);
+                                });
+
+                                $('#subModeloBtn').prop('disabled', false);
+                                $('#filtrosForm').trigger('submit');
+                            });
+
+                        $list.append($b);
+
+                        if (initialModelo && m.id_modelo == initialModelo) {
+                            setBtnText('modeloBtn', m.nome);
+                            $('#modeloBtn').prop('disabled', false);
+                        }
+                    });
+
+                    $('#modeloBtn').prop('disabled', false);
+
+                    if (initialModelo) {
+                        const r2 = await fetch(`/Anuncios/GetSubModelos?idModelo=${initialModelo}`);
+                        const list2 = await r2.json();
+
+                        const $sub = $('#subModeloList');
+                        $sub.find('button[data-val]').remove();
+
+                        list2.forEach(s => {
+                            const $sb = $('<button type="button" class="list-group-item list-group-item-action">')
+                                .attr('data-val', s.id_sub_modelo)
+                                .text(s.nome)
+                                .on('click', function () {
+                                    $('#idSubModeloVal').val(s.id_sub_modelo);
+                                    setBtnText('subModeloBtn', s.nome);
+                                    $('#filtrosForm').trigger('submit');
+                                });
+
+                            $sub.append($sb);
+
+                            if (initialSub && s.id_sub_modelo == initialSub) {
+                                setBtnText('subModeloBtn', s.nome);
+                            }
+                        });
+
+                        $('#subModeloBtn').prop('disabled', false);
+                    }
+                } else {
+                    setBtnText('marcaBtn', 'Selecionar...');
+                }
+            })();
+
+            // ✅ Guardar Filtros
+            $('#btnGuardarFiltros').on('click', function () {
+                const $form = $('#filtrosForm');
+                const token = $form.find('input[name="__RequestVerificationToken"]').val();
+
+                $.ajax({
+                    url: '/Anuncios/GuardarFiltros',
+                    method: 'POST',
+                    data: $form.serialize(),
+                    headers: { 'RequestVerificationToken': token },
+                    success: function (res) {
+                        if (res && res.ok) {
+                            alert(res.message || 'Filtros guardados.');
+                        } else {
+                            alert(res?.message || 'Não foi possível guardar os filtros.');
+                        }
+                    },
+                    error: function () {
+                        alert('Erro aoguardar filtros.');
+                    }
+                });
+            });
+        });
+    </script>
+}

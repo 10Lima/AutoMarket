@@ -1,0 +1,132 @@
+﻿@model AutoMarket.Models.Market.Candidatura_Vendedor
+@{
+    ViewData["Title"] = "Candidatar a vendedor";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<form asp-action="Candidatar" method="post">
+    @Html.AntiForgeryToken()
+
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="tipo" class="form-label">Tipo</label>
+        <select asp-for="tipo" class="form-select">
+            <option value="particular">Particular</option>
+            <option value="empresa">Empresa</option>
+        </select>
+        <span asp-validation-for="tipo" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label id="lblNifNipc" asp-for="NIF_NIPC" class="form-label">NIF</label>
+        <input asp-for="NIF_NIPC"
+               class="form-control"
+               inputmode="numeric"
+               autocomplete="off"
+               data-val="true"
+               data-val-required="This field is required." />
+        <span asp-validation-for="NIF_NIPC" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="telemovel_comercial" class="form-label">Telemóvel comercial (opcional)</label>
+        <input asp-for="telemovel_comercial" class="form-control" />
+        <span asp-validation-for="telemovel_comercial" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="website_url" class="form-label">Website (opcional)</label>
+        <input asp-for="website_url" class="form-control" />
+        <span asp-validation-for="website_url" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submeter candidatura</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        // Validação PT: 9 dígitos + dígito de controlo (mod 11)
+        function isValidPtTaxNumber9(value) {
+            const n = (value || "").replace(/\D/g, "");
+            if (n.length !== 9) return false;
+
+            let sum = 0;
+            for (let i = 0; i < 8; i++) {
+                sum += parseInt(n[i], 10) * (9 - i);
+            }
+
+            let check = 11 - (sum % 11);
+            if (check >= 10) check = 0;
+
+            return check === parseInt(n[8], 10);
+        }
+
+        function isValidPrefixForTipo(tipo, digits) {
+            const first = digits[0];
+
+            // Regras:
+            // NIF (pessoas singulares): começa por 1–4 ou 7
+            // NIPC (pessoas coletivas): começa por 5, 6 ou 9
+            if (tipo === "particular") return ["1", "2", "3", "4", "7"].includes(first);
+            if (tipo === "empresa") return ["5", "6", "9"].includes(first);
+
+            return false;
+        }
+
+        function updateNifLabel() {
+            const tipo = ($("#tipo").val() || "particular").toString();
+            const isEmpresa = (tipo === "empresa");
+
+            $("#lblNifNipc").text(isEmpresa ? "NIPC" : "NIF");
+            $("#NIF_NIPC").attr("placeholder", isEmpresa ? "NIPC (9 dígitos)" : "NIF (9 dígitos)");
+        }
+
+        $(function () {
+            // Mensagem curta para required
+            $("#NIF_NIPC").attr("data-val-required", "This field is required.");
+
+            updateNifLabel();
+
+            $("#tipo").on("change", function () {
+                updateNifLabel();
+                if ($("form").validate) {
+                    $("#NIF_NIPC").valid();
+                }
+            });
+
+            if ($.validator) {
+                $.validator.addMethod("ptnifniptipo", function (value, element) {
+                    const tipo = ($("#tipo").val() || "particular").toString();
+                    const digits = (value || "").replace(/\D/g, "");
+
+                    if (digits.length !== 9) return false;
+                    if (!isValidPrefixForTipo(tipo, digits)) return false;
+
+                    return isValidPtTaxNumber9(digits);
+                });
+
+                $.validator.unobtrusive.adapters.addBool("ptnifniptipo");
+
+                $("#NIF_NIPC").rules("add", {
+                    ptnifniptipo: true,
+                    messages: {
+                        required: "This field is required.",
+                        ptnifniptipo: function () {
+                            const tipo = ($("#tipo").val() || "particular").toString();
+
+                            if (tipo === "empresa") {
+                                return "NIPC inválido. Deve ter 9 dígitos, começar por 5, 6 ou 9 e respeitar o dígito de controlo.";
+                            }
+
+                            return "NIF inválido. Deve ter 9 dígitos, começar por 1 a 4 ou 7 e respeitar o dígito de controlo.";
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+}

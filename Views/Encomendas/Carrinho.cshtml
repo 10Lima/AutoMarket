@@ -1,0 +1,53 @@
+@model IEnumerable<AutoMarket.Models.Market.Encomenda>
+
+@{
+    ViewData["Title"] = "Carrinho";
+}
+
+<div class="container mt-3">
+    <h2>Carrinho</h2>
+
+    @if (TempData["SucessoCompra"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["SucessoCompra"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info mb-0">
+            Não existem encomendas pendentes.
+        </div>
+    }
+    else
+    {
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Anúncio</th>
+                    <th>Data</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var e in Model)
+            {
+                <tr>
+                    <td>@(e.id_anuncioNavigation?.titulo ?? $"Anúncio #{e.id_anuncio}")</td>
+                    <td>@e.data_encomenda.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td class="text-end">
+                        <a class="btn btn-success"
+                           asp-controller="Encomendas"
+                           asp-action="Checkout"
+                           asp-route-id="@e.id_encomenda">
+                            Checkout
+                        </a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>

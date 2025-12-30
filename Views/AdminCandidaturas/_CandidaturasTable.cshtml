@@ -1,0 +1,90 @@
+﻿@model List<AutoMarket.Models.Market.Candidatura_Vendedor>
+
+@{
+    var estadoAtual = (ViewData["EstadoAtual"] as string) ?? "pendente";
+    var usernames = ViewData["Usernames"] as Dictionary<int, string> ?? new Dictionary<int, string>();
+}
+
+@if (Model == null || Model.Count == 0)
+{
+    <div class="alert alert-info">Não existem candidaturas com os critérios selecionados.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Utilizador</th>
+                    <th>Tipo</th>
+                    <th>NIF/NIPC</th>
+                    <th>Estado</th>
+                    <th>Data submissão</th>
+                    <th></th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model)
+                {
+                    var username = usernames.ContainsKey(c.id_utilizador) ? usernames[c.id_utilizador] : $"#{c.id_utilizador}";
+
+                    <tr>
+                        <td>@c.id_candidatura</td>
+                        <td>@username</td>
+                        <td>@c.tipo</td>
+                        <td>@c.NIF_NIPC</td>
+                        <td>
+                            <span class="badge bg-secondary">@c.estado</span>
+                        </td>
+                        <td>@c.data_submissao.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#detalhesModal"
+                                    data-id="@c.id_candidatura">
+                                Detalhes
+                            </button>
+                        </td>
+
+                        <td class="text-end">
+                            @if (string.Equals(c.estado, "pendente", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <!-- Aprovar (AJAX) -->
+                                <form class="d-inline"
+                                      asp-controller="AdminCandidaturas"
+                                      asp-action="Aprovar"
+                                      method="post"
+                                      data-ajax="true"
+                                      data-ajax-method="post"
+                                      data-ajax-mode="replace"
+                                      data-ajax-update="#candidaturasArea">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@c.id_candidatura" />
+                                    <input type="hidden" name="estado" value="@estadoAtual" />
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        Aprovar
+                                    </button>
+                                </form>
+
+                                <!-- ✅ Rejeitar: SEM data-bs-toggle (JS controla abertura) -->
+                                <button type="button"
+                                        class="btn btn-sm btn-danger ms-1 btn-rejeitar"
+                                        data-id="@c.id_candidatura"
+                                        data-estado="@estadoAtual">
+                                    Rejeitar
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

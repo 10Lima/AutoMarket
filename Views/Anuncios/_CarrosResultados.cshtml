@@ -1,0 +1,47 @@
+@model IEnumerable<AutoMarket.Models.Market.Anuncio>
+
+@{
+    var estado = (ViewBag.Estado as string) ?? "todos";
+    var sort = (ViewBag.Sort as string) ?? "recent";
+
+    int countTodos = (int)(ViewBag.CountTodos ?? 0);
+    int countAtivo = (int)(ViewBag.CountAtivo ?? 0);
+    int countReservado = (int)(ViewBag.CountReservado ?? 0);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+        <div class="text-muted">Número de anúncios: @countTodos</div>
+    </div>
+
+    <select class="form-select" style="min-width: 240px;" id="sortSelect">
+        <option value="destaque" selected="@(sort=="destaque")">Destacado</option>
+        <option value="recent" selected="@(sort=="recent")">Mais Recentes</option>
+        <option value="price_asc" selected="@(sort=="price_asc")">Preço: Mais baixo</option>
+        <option value="price_desc" selected="@(sort=="price_desc")">Preço: Mais alto</option>
+        <option value="km_asc" selected="@(sort=="km_asc")">KM: mais baixa</option>
+        <option value="km_desc" selected="@(sort=="km_desc")">KM: mais alta</option>
+        <option value="hp_asc" selected="@(sort=="hp_asc")">Potência: mais baixa</option>
+        <option value="hp_desc" selected="@(sort=="hp_desc")">Potência: mais alta</option>
+    </select>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(estado=="todos" ? "active" : "")" href="#" data-estado="todos">
+            Todos (@countTodos)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(estado=="ativo" ? "active" : "")" href="#" data-estado="ativo">
+            Ativos (@countAtivo)
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(estado=="reservado" ? "active" : "")" href="#" data-estado="reservado">
+            Reservados (@countReservado)
+        </a>
+    </li>
+</ul>
+
+@await Html.PartialAsync("_CarrosListaCards", Model)

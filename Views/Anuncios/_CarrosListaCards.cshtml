@@ -1,0 +1,94 @@
+@model IEnumerable<AutoMarket.Models.Market.Anuncio>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-light border">
+        <i class="bi bi-info-circle"></i> Sem anúncios para os filtros atuais.
+    </div>
+}
+else
+{
+    <div class="row g-3">
+    @foreach (var a in Model)
+    {
+        var img = a.Anuncio_Imagem?
+            .OrderByDescending(x => x.principal)
+            .ThenBy(x => x.ordem ?? 9999)
+            .Select(x => x.id_imagem_anuncioNavigation?.url)
+            .FirstOrDefault();
+
+        var v = a.id_veiculoNavigation;
+        var sm = v?.id_sub_modeloNavigation;
+        var md = sm?.id_modeloNavigation;
+        var mk = md?.id_marcaNavigation;
+
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="card h-100 shadow-sm">
+                <a class="text-decoration-none text-dark" asp-action="Detalhes" asp-route-id="@a.id_anuncio">
+                    <div style="aspect-ratio: 16/10; background:#f3f4f6; overflow:hidden; position:relative;">
+                        @if (!string.IsNullOrWhiteSpace(img))
+                        {
+                            <img src="@img" alt="@a.titulo" style="width:100%; height:100%; object-fit:cover;" />
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                                <i class="bi bi-image" style="font-size:3rem;"></i>
+                            </div>
+                        }
+
+                        @if (a.destaque)
+                        {
+                            <span class="badge bg-primary position-absolute top-0 end-0 m-2">Promovido</span>
+                        }
+
+                        @if (string.Equals(a.estado, "reservado", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2">Reservado</span>
+                        }
+                    </div>
+
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="fw-bold fs-5">
+                                @(a.preco.HasValue ? $"{a.preco.Value:N0} €" : "—")
+                            </div>
+                        </div>
+
+                        <div class="fw-semibold text-truncate mb-1">
+                            @a.titulo
+                        </div>
+
+                        <div class="text-muted small text-truncate mb-2">
+                            @mk?.nome @md?.nome @(sm != null ? "• " + sm.nome : "")
+                        </div>
+
+                        <div class="small d-flex gap-2 flex-wrap">
+                            @if (v?.ano != null)
+                            {
+                                <span><i class="bi bi-calendar3"></i> @v.ano</span>
+                            }
+                            @if (v?.quilometragem != null)
+                            {
+                                <span><i class="bi bi-speedometer2"></i> @v.quilometragem.Value.ToString("N0") km</span>
+                            }
+                            @if (sm?.potencia_hp > 0)
+                            {
+                                <span><i class="bi bi-lightning-charge"></i> @sm.potencia_hp cv</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(sm?.combustivel))
+                            {
+                                <span>@sm.combustivel</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(sm?.caixa))
+                            {
+                                <span>@sm.caixa</span>
+                            }
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    }
+    </div>
+}

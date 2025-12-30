@@ -1,0 +1,43 @@
+﻿@model List<AutoMarket.Models.Market.Ace_Admin_Acao>
+
+@{
+    var usernames = ViewData["Usernames"] as Dictionary<int, string> ?? new Dictionary<int, string>();
+}
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">Sem ações para os filtros atuais.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Admin</th>
+                    <th>Utilizador</th>
+                    <th>ID Candidatura</th>
+                    <th>Motivo</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model)
+                {
+                    usernames.TryGetValue(a.id_admin, out var adminU);
+                    usernames.TryGetValue(a.id_utilizador, out var userU);
+
+                    <tr>
+                        <td>@a.data_acao</td>
+                        <td><span class="badge bg-secondary">@a.tipo_acao</span></td>
+                        <td>@(!string.IsNullOrWhiteSpace(adminU) ? adminU : $"#{a.id_admin}")</td>
+                        <td>@(!string.IsNullOrWhiteSpace(userU) ? userU : $"#{a.id_utilizador}")</td>
+                        <td>@(a.id_candidatura.HasValue? a.id_candidatura.Value.ToString() : "-")</td>
+                        <td>@(string.IsNullOrWhiteSpace(a.motivo) ? "-" : a.motivo)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

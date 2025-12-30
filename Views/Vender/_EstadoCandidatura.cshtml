@@ -1,0 +1,81 @@
+@model AutoMarket.Models.Market.Candidatura_Vendedor
+
+@{
+    var motivo = ViewData["MotivoRejeicao"] as string;
+    var estado = (Model.estado ?? "").Trim().ToLowerInvariant();
+}
+
+<div class="mb-3">
+    <span class="badge bg-secondary">@Model.estado</span>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Tipo</dt>
+            <dd class="col-sm-9">@Model.tipo</dd>
+
+            <dt class="col-sm-3">NIF/NIPC</dt>
+            <dd class="col-sm-9">@Model.NIF_NIPC</dd>
+
+            <dt class="col-sm-3">Data submissão</dt>
+            <dd class="col-sm-9">@Model.data_submissao.ToString("dd/MM/yyyy HH:mm")</dd>
+        </dl>
+    </div>
+</div>
+
+@if (estado == "pendente")
+{
+    <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle"></i> A tua candidatura está em análise.
+    </div>
+
+    <form method="post"
+          asp-action="Cancelar"
+          data-ajax="true"
+          data-ajax-method="post"
+          data-ajax-mode="replace"
+          data-ajax-update="#estadoArea"
+          onsubmit="return confirm('Tens a certeza que queres cancelar a candidatura?');"
+          class="mt-3">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger">Cancelar candidatura</button>
+    </form>
+}
+else if (estado == "rejeitada")
+{
+    <div class="alert alert-danger mt-3">
+        <i class="bi bi-x-circle"></i> A candidatura foi rejeitada.
+        @if (!string.IsNullOrWhiteSpace(motivo))
+        {
+            <div class="mt-2"><strong>Motivo:</strong> @motivo</div>
+        }
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <a class="btn btn-primary" asp-action="Candidatar" asp-route-nova="1">Submeter nova candidatura</a>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Voltar à página inicial</a>
+    </div>
+}
+else if (estado == "cancelada")
+{
+    <div class="alert alert-warning mt-3">
+        <i class="bi bi-exclamation-triangle"></i> A candidatura foi cancelada.
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <a class="btn btn-primary" asp-action="Candidatar" asp-route-nova="1">Submeter nova candidatura</a>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Voltar à página inicial</a>
+    </div>
+}
+else if (estado == "aprovada")
+{
+    <div class="alert alert-success mt-3">
+        <i class="bi bi-check-circle"></i> A candidatura foi aprovada. Já podes começar a vender!
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <a class="btn btn-primary" asp-controller="Anuncios" asp-action="Criar">Criar anúncio</a>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Voltar à página inicial</a>
+    </div>
+}

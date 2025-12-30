@@ -1,0 +1,99 @@
+@model List<AutoMarket.Models.Market.Comprador_Filtro>
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Meus Filtros";
+}
+
+<div class="container mt-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Meus Filtros</h3>
+        <a class="btn btn-outline-secondary" asp-action="Carros" asp-controller="Anuncios">
+            Voltar aos carros
+        </a>
+    </div>
+
+    @if (TempData["Msg"] != null)
+    {
+        <div class="alert alert-info">@TempData["Msg"]</div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-light border">Ainda não tens filtros guardados.</div>
+        return;
+    }
+
+    <div class="row g-3">
+        @foreach (var cf in Model)
+        {
+            var json = cf.id_filtroNavigation?.parametros ?? "{}";
+
+            string resumo = "Filtros guardados";
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                string GetStr(string k) => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() ?? "" : "";
+                int? GetInt(string k) => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.Number ? p.GetInt32() : null;
+
+                var q = GetStr("q");
+                var categoria = GetStr("categoria");
+                var combustivel = GetStr("combustivel");
+                var caixa = GetStr("caixa");
+                var idMarca = GetInt("idMarca");
+
+                var parts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(q)) parts.Add($"Título: {q}");
+                if (!string.IsNullOrWhiteSpace(categoria)) parts.Add($"Categoria: {categoria}");
+                if (!string.IsNullOrWhiteSpace(combustivel)) parts.Add($"Combustível: {combustivel}");
+                if (!string.IsNullOrWhiteSpace(caixa)) parts.Add($"Caixa: {caixa}");
+                if (idMarca.HasValue) parts.Add($"Marca ID: {idMarca.Value}");
+
+                if (parts.Count > 0) resumo = string.Join(" • ", parts);
+            }
+            catch { /* ignora */ }
+
+            <div class="col-12 col-lg-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="fw-semibold">@resumo</div>
+                                <div class="text-muted small">
+                                    Guardado em: @cf.data_filtros.ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                            </div>
+                        </div>
+
+                        <details class="mt-2">
+                            <summary class="text-muted small">Ver JSON</summary>
+                            <pre class="mt-2 mb-0 small bg-light p-2 rounded" style="white-space: pre-wrap;">@json</pre>
+                        </details>
+
+                        <div class="d-flex gap-2 mt-3">
+                            <a class="btn btn-outline-primary"
+                               asp-action="AplicarFiltro"
+                               asp-controller="Anuncios"
+                               asp-route-idFiltro="@cf.id_filtro">
+                                Aplicar
+                            </a>
+
+
+                            <form asp-action="EliminarFiltro" asp-controller="Anuncios" method="post" class="ms-auto">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="idFiltro" value="@cf.id_filtro" />
+                                <button type="submit" class="btn btn-outline-danger">
+                                    Eliminar
+                                </button>
+                            </form>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

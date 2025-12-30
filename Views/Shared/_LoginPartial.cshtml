@@ -1,0 +1,81 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+@inject AutoMarket.Services.CurrentUserService CurrentUser
+@inject AutoMarket.Data.MarketplaceDbContext MarketDb
+
+<ul class="navbar-nav">
+@if (SignInManager.IsSignedIn(User))
+{
+    var user = await UserManager.GetUserAsync(User);
+    var userName = user?.UserName ?? "Conta";
+
+    var idMarketUser = await CurrentUser.GetMarketUserIdAsync(User);
+    var isVendedor = idMarketUser != null &&
+                     await MarketDb.Vendedor.AnyAsync(v => v.id_utilizador == idMarketUser.Value);
+
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle"
+           href="#"
+           id="userMenu"
+           role="button"
+           data-bs-toggle="dropdown"
+           aria-expanded="false">
+            <i class="bi bi-person-circle"></i> @userName
+        </a>
+
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+            <li>
+                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
+                    <i class="bi bi-person"></i> Dados pessoais
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Email">
+                    <i class="bi bi-envelope"></i> Email
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/ChangePassword">
+                    <i class="bi bi-key"></i> Alterar palavra-passe
+                </a>
+            </li>
+
+            @if (isVendedor)
+            {
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                    <!-- ✅ CORRIGIR: apontar para "Meus" (não "_MeusLista") -->
+                    <a class="dropdown-item" asp-controller="Anuncios" asp-action="Meus">
+                        <i class="bi bi-card-list"></i> Os meus anúncios
+                    </a>
+                </li>
+            }
+
+            <li><hr class="dropdown-divider" /></li>
+
+            <li>
+                <form class="dropdown-item p-0 m-0"
+                      asp-area="Identity"
+                      asp-page="/Account/Logout"
+                      asp-route-returnUrl="@Url.Action("Index","Home")"
+                      method="post">
+                    <button type="submit" class="btn btn-link dropdown-item">
+                        <i class="bi bi-box-arrow-right"></i> Sair
+                    </button>
+                </form>
+            </li>
+        </ul>
+    </li>
+}
+else
+{
+    <li class="nav-item">
+        <a class="nav-link" asp-area="Identity" asp-page="/Account/Login">Entrar</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" asp-area="Identity" asp-page="/Account/Register">Registar</a>
+    </li>
+}
+</ul>

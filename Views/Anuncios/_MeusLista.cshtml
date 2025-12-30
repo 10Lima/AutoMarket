@@ -1,0 +1,177 @@
+﻿@model IEnumerable<AutoMarket.Models.Market.Anuncio>
+
+<style>
+    .adRow {
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #fff;
+        padding: 14px;
+        display: grid;
+        grid-template-columns: 36px 160px 1fr 160px;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 14px;
+    }
+
+    .adImg {
+        width: 160px;
+        height: 110px;
+        border-radius: 12px;
+        object-fit: cover;
+        background: #f3f4f6;
+        border: 1px solid #eef2f7;
+    }
+
+    .adTitle {
+        font-size: 22px;
+        font-weight: 750;
+        color: #111827;
+        margin-bottom: 4px;
+    }
+
+    .adMeta {
+        color: #6b7280;
+        font-size: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        align-items: center;
+    }
+
+    .price {
+        font-size: 22px;
+        font-weight: 800;
+        text-align: right;
+    }
+
+    .actions {
+        grid-column: 2 / 5;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        padding-top: 8px;
+    }
+
+    .pill {
+        border: 1px solid #e5e7eb;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #374151;
+        background: #f9fafb;
+    }
+</style>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Nenhum anúncio encontrado.
+    </div>
+}
+else
+{
+    foreach (var anuncio in Model)
+    {
+        var imgPrincipal = anuncio.Anuncio_Imagem?
+            .OrderByDescending(x => x.principal)
+            .ThenBy(x => x.ordem)
+            .FirstOrDefault();
+
+        var imgUrl = imgPrincipal?.id_imagem_anuncioNavigation?.url;
+
+        var marca = anuncio.id_veiculoNavigation?.id_sub_modeloNavigation?.id_modeloNavigation?.id_marcaNavigation?.nome;
+        var modelo = anuncio.id_veiculoNavigation?.id_sub_modeloNavigation?.id_modeloNavigation?.nome;
+        var sub = anuncio.id_veiculoNavigation?.id_sub_modeloNavigation?.nome;
+
+        <div class="adRow">
+            <input type="checkbox" class="form-check-input" />
+
+            @if (!string.IsNullOrWhiteSpace(imgUrl))
+            {
+                <img class="adImg" src="@imgUrl" alt="@anuncio.titulo" />
+            }
+            else
+            {
+                <div class="adImg d-flex align-items-center justify-content-center text-muted">
+                    sem imagem
+                </div>
+            }
+
+            <div>
+                <div class="adTitle">@anuncio.titulo</div>
+
+                <div class="adMeta">
+                    <span>@(marca ?? "") @(modelo ?? "") @(sub != null ? ("• " + sub) : "")</span>
+                    <span>📍 @(anuncio.localizacao ?? "—")</span>
+
+                    @if (anuncio.data_publicacao.HasValue)
+                    {
+                        <span>📅 @anuncio.data_publicacao.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                    }
+                    else
+                    {
+                        <span>📅 —</span>
+                    }
+
+                    <span class="pill">@anuncio.estado</span>
+                    @if (anuncio.destaque)
+                    {
+                        <span class="pill">destaque</span>
+                    }
+                </div>
+            </div>
+
+            <div class="price">
+                @(anuncio.preco.HasValue? anuncio.preco.Value.ToString("0.##") + " €" : "—")
+            </div>
+
+            <div class="actions">
+                <a class="btn btn-outline-secondary"
+                   href="@Url.Action("Detalhes", "Anuncios", new { id = anuncio.id_anuncio })">
+                    Ver
+                </a>
+
+                <a class="btn btn-outline-secondary"
+                   href="@Url.Action("Editar", "Anuncios", new { id = anuncio.id_anuncio })">
+                    Editar
+                </a>
+
+                @if (anuncio.estado == "ativo")
+                {
+                    <form asp-action="Pausar" asp-controller="Anuncios" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@anuncio.id_anuncio" />
+                        <button type="submit" class="btn btn-warning">Pausar</button>
+                    </form>
+                }
+
+                @if (anuncio.estado is "inativo" or "rascunho")
+                {
+                    <form asp-action="Ativar" asp-controller="Anuncios" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@anuncio.id_anuncio" />
+                        <button type="submit" class="btn btn-success">Ativar</button>
+                    </form>
+                }
+
+                <form asp-action="ToggleDestaque" asp-controller="Anuncios" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@anuncio.id_anuncio" />
+                    <button type="submit" class="btn btn-outline-dark">
+                        @(anuncio.destaque ? "Remover destaque" : "Destacar")
+                    </button>
+                </form>
+
+                <form asp-action="Remover" asp-controller="Anuncios" method="post"
+                      class="d-inline"
+                      onsubmit="return confirm('Tem a certeza que deseja remover este anúncio?');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@anuncio.id_anuncio" />
+                    <button type="submit" class="btn btn-outline-danger">Terminar</button>
+                </form>
+            </div>
+        </div>
+    }
+}

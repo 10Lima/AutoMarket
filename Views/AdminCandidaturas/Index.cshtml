@@ -1,0 +1,360 @@
+﻿@model List<AutoMarket.Models.Market.Candidatura_Vendedor>
+
+@{
+    ViewData["Title"] = "Candidaturas";
+    var estadoAtual = (ViewData["EstadoAtual"] as string) ?? "pendente";
+    var idCandidaturaAtual = ViewData["IdCandidaturaAtual"] as int?;
+    var utilizadorAtual = (ViewData["UtilizadorAtual"] as string) ?? "";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<form id="filtroForm"
+      method="get"
+      asp-controller="AdminCandidaturas"
+      asp-action="Lista"
+      data-ajax="true"
+      data-ajax-method="get"
+      data-ajax-mode="replace"
+      data-ajax-update="#candidaturasArea"
+      class="row g-2 align-items-end mb-3">
+
+    <div class="col-auto">
+        <label class="form-label" for="estado">Estado</label>
+        <select class="form-select" id="estado" name="estado">
+            <option value="pendente" selected="@(estadoAtual == "pendente")">Pendente</option>
+            <option value="aprovada" selected="@(estadoAtual == "aprovada")">Aprovada</option>
+            <option value="rejeitada" selected="@(estadoAtual == "rejeitada")">Rejeitada</option>
+            <option value="cancelada" selected="@(estadoAtual == "cancelada")">Cancelada</option>
+            <option value="todas" selected="@(estadoAtual == "todas")">Todas</option>
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label" for="idCandidatura">ID Candidatura</label>
+        <input class="form-control" id="idCandidatura" name="idCandidatura"
+               value="@(idCandidaturaAtual?.ToString() ?? "")"
+               inputmode="numeric"
+               placeholder="ID" />
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label" for="utilizador">Utilizador</label>
+        <input class="form-control" id="utilizador" name="utilizador"
+               value="@utilizadorAtual"
+               placeholder="ID / username / email" />
+    </div>
+</form>
+
+<div id="candidaturasArea">
+    <partial name="_CandidaturasTable" model="Model" />
+</div>
+
+<!-- Modal Detalhes -->
+<div class="modal fade" id="detalhesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes da candidatura</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+
+            <div class="modal-body" id="detalhesModalBody">
+                <div class="text-center text-muted">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">A carregar...</span>
+                    </div>
+                    <div class="mt-2">A carregar...</div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ Modal reutilizável (SÓ HTML) -->
+<partial name="_MotivoAcaoAdminModal" />
+
+@section Scripts {
+    <script>
+        // ========================================
+        // 1) INICIALIZAR MODAL DE MOTIVO (global)
+        // ========================================
+        (function () {
+            const modalEl = document.getElementById('motivoModal');
+            if (!modalEl) return;
+
+            // ✅ Bootstrap já carregado aqui
+            const modal = new bootstrap.Modal(modalEl);
+
+            const form = document.getElementById('motivoForm');
+            const titulo = document.getElementById('motivoTitulo');
+            const idUtilizador = document.getElementById('motivoIdUtilizador');
+            const motivo = document.getElementById('motivoTexto');
+            const sugestoes = document.getElementById('motivosSugestoes');
+            const sugestoesArea = document.getElementById('motivosSugestoesArea');
+            const erro = document.getElementById('motivoErro');
+            const counter = document.getElementById('motivoCounter');
+            const obrigatorio = document.getElementById('motivoObrigatorio');
+            const submitBtn = document.getElementById('motivoSubmit');
+
+            const presets = {
+                bloquear_utilizador: {
+                    titulo: 'Bloquear utilizador',
+                    obrigatorio: true,
+                    btnClass: 'btn-danger',
+                    btnText: 'Bloquear',
+                    sugestoes: [
+                        "Violação dos termos de utilização.",
+                        "Atividade suspeita detetada na conta.",
+                        "Conteúdo inadequado ou fraudulento.",
+                        "Comportamento abusivo ou assédio."
+                    ]
+                },
+                desbloquear_utilizador: {
+                    titulo: 'Desbloquear utilizador',
+                    obrigatorio: false,
+                    btnClass: 'btn-success',
+                    btnText: 'Desbloquear',
+                    sugestoes: [
+                        "Situação regularizada.",
+                        "Pedido de revisão aceite.",
+                        "Erro administrativo corrigido."
+                    ]
+                },
+                rejeitar_vendedor: {
+                    titulo: 'Rejeitar candidatura a vendedor',
+                    obrigatorio: true,
+                    btnClass: 'btn-danger',
+                    btnText: 'Rejeitar',
+                    sugestoes: [
+                        "Documentação/identificação inválida ou incompleta.",
+                        "Inconsistência nos dados fornecidos.",
+                        "Candidatura não cumpre os critérios da plataforma.",
+                        "NIF/NIPC inválido."
+                    ]
+                },
+                remover_admin: {
+                    titulo: 'Remover privilégios de administrador',
+                    obrigatorio: true,
+                    btnClass: 'btn-warning',
+                    btnText: 'Remover',
+                    sugestoes: [
+                        "Cessação de funções na plataforma.",
+                        "Acesso administrativo já não é necessário.",
+                        "Violação das políticas internas.",
+                        "Pedido do próprio utilizador."
+                    ]
+                }
+            };
+
+            let postUrl = null;
+            let acaoAtual = null;
+            let onSuccess = null;
+
+            // Contador de caracteres
+            motivo.addEventListener('input', function () {
+                counter.textContent = (this.value || "").length;
+            });
+
+            // ✅ Função global para abrir modal
+            window.abrirMotivoAdmin = function (acao, url, idU, onOk) {
+                const config = presets[acao];
+                if (!config) {
+                    console.error('Ação desconhecida:', acao);
+                    return;
+                }
+
+                postUrl = url;
+                acaoAtual = acao;
+                onSuccess = typeof onOk === "function" ? onOk : null;
+
+                titulo.textContent = config.titulo;
+                submitBtn.className = `btn ${config.btnClass}`;
+                submitBtn.textContent = config.btnText;
+
+                obrigatorio.style.display = config.obrigatorio ? 'inline' : 'none';
+                motivo.required = config.obrigatorio;
+
+                idUtilizador.value = idU;
+                motivo.value = "";
+                counter.textContent = "0";
+                erro.style.display = "none";
+                erro.textContent = "";
+                sugestoes.innerHTML = "";
+
+                const lista = config.sugestoes || [];
+                sugestoesArea.style.display = lista.length ? '' : 'none';
+
+                lista.forEach(txt => {
+                    const b = document.createElement('button');
+                    b.type = "button";
+                    b.className = "btn btn-sm btn-outline-secondary";
+                    b.textContent = txt;
+                    b.addEventListener('click', () => {
+                        motivo.value = txt;
+                        counter.textContent = txt.length;
+                        motivo.focus();
+                    });
+                    sugestoes.appendChild(b);
+                });
+
+                submitBtn.disabled = false;
+                modal.show();
+            };
+
+            // Submit AJAX
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const config = presets[acaoAtual];
+                const m = (motivo.value || "").trim();
+
+                if (config && config.obrigatorio && !m) {
+                    erro.textContent = "Motivo é obrigatório.";
+                    erro.style.display = "block";
+                    return;
+                }
+
+                if (m.length > 400) {
+                    erro.textContent = "O motivo não pode ter mais de 400 caracteres.";
+                    erro.style.display = "block";
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                const originalText = config ? config.btnText : "Confirmar";
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>A processar...';
+
+                $.ajax({
+                    url: postUrl,
+                    method: "POST",
+                    data: $(form).serialize(),
+                    success: function () {
+                        modal.hide();
+                        if (onSuccess) onSuccess();
+                        else location.reload();
+                    },
+                    error: function (xhr) {
+                        erro.textContent = xhr?.responseText || "Erro ao executar a ação.";
+                        erro.style.display = "block";
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    }
+                });
+            });
+
+            // Reset ao fechar
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                form.reset();
+                submitBtn.disabled = false;
+                erro.style.display = "none";
+                erro.textContent = "";
+                counter.textContent = "0";
+                sugestoes.innerHTML = "";
+                postUrl = null;
+                acaoAtual = null;
+                onSuccess = null;
+            });
+        })();
+
+        // ========================================
+        // 2) LÓGICA DOS FILTROS E DETALHES
+        // ========================================
+        (function () {
+            const form = document.getElementById('filtroForm');
+            const estado = document.getElementById('estado');
+            const idCand = document.getElementById('idCandidatura');
+            const util = document.getElementById('utilizador');
+
+            if (!form) return;
+
+            function debounce(fn, delay) {
+                let t = null;
+                return function () {
+                    clearTimeout(t);
+                    t = setTimeout(fn, delay);
+                };
+            }
+
+            const submitNow = function () {
+                if (form.requestSubmit) form.requestSubmit();
+                else $(form).submit();
+            };
+
+            const submitDebounced = debounce(submitNow, 350);
+
+            if (estado) estado.addEventListener('change', submitNow);
+
+            if (idCand) {
+                idCand.addEventListener('input', function () {
+                    this.value = this.value.replace(/[^\d]/g, '');
+                    submitDebounced();
+                });
+            }
+
+            if (util) util.addEventListener('input', submitDebounced);
+
+            // Modal de detalhes
+            const detalhesModal = document.getElementById('detalhesModal');
+            const detalhesBody = document.getElementById('detalhesModalBody');
+
+            if (detalhesModal && detalhesBody) {
+                detalhesModal.addEventListener('show.bs.modal', function (event) {
+                    const btn = event.relatedTarget;
+                    if (!btn) return;
+
+                    const id = btn.getAttribute('data-id');
+
+                    detalhesBody.innerHTML = `
+                        <div class="text-center text-muted">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">A carregar...</span>
+                            </div>
+                            <div class="mt-2">A carregar...</div>
+                        </div>
+                    `;
+
+                    fetch(`@Url.Action("Detalhes", "AdminCandidaturas")?id=${encodeURIComponent(id)}`, {
+                        headers: { "X-Requested-With": "XMLHttpRequest" }
+                    })
+                    .then(r => {
+                        if (!r.ok) throw new Error('Erro ao carregar');
+                        return r.text();
+                    })
+                    .then(html => {
+                        detalhesBody.innerHTML = html;
+                    })
+                    .catch(() => {
+                        detalhesBody.innerHTML = '<div class="alert alert-danger">Erro ao carregar detalhes da candidatura.</div>';
+                    });
+                });
+            }
+
+            // ✅ Botão REJEITAR (delegação)
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('.btn-rejeitar');
+                if (!btn) return;
+
+                const id = btn.getAttribute('data-id');
+                const estadoVal = btn.getAttribute('data-estado') || 'pendente';
+
+                const onOk = function () {
+                    if (form.requestSubmit) form.requestSubmit();
+                    else $(form).submit();
+                };
+
+                // ✅ Agora abrirMotivoAdmin está definido
+                abrirMotivoAdmin(
+                    'rejeitar_vendedor',
+                    '@Url.Action("Rejeitar", "AdminCandidaturas")?id=' + id + '&estado=' + encodeURIComponent(estadoVal),
+                    0,
+                    onOk
+                );
+            });
+        })();
+    </script>
+}

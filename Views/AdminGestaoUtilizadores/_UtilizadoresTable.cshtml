@@ -1,0 +1,112 @@
+﻿@model List<AutoMarket.Models.Market.Utilizador>
+
+@{
+    var usernames = ViewData["Usernames"] as Dictionary<int, string> ?? new();
+    var emails = ViewData["Emails"] as Dictionary<int, string> ?? new();
+    var adminsAtuais = ViewData["AdminsAtuais"] as HashSet<int> ?? new();
+    var estados = ViewData["Estados"] as Dictionary<int, string> ?? new();
+    var podeRecuperar = ViewData["PodeRecuperarAdmin"] as HashSet<int> ?? new();
+}
+
+@if (Model == null || Model.Count == 0)
+{
+    <div class="alert alert-info">Sem resultados.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Nome</th>
+                    <th>Estado</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model)
+                {
+                    usernames.TryGetValue(u.id_utilizador, out var uname);
+                    emails.TryGetValue(u.id_utilizador, out var em);
+
+                    var id = u.id_utilizador;
+                    var isAdminAtual = adminsAtuais.Contains(id);
+                    estados.TryGetValue(id, out var estado);
+                    estado = (estado ?? "ativo").ToLowerInvariant();
+                    var foiRemovidoAdmin = podeRecuperar.Contains(id);
+
+                    <tr>
+                        <td>@id</td>
+                        <td>@(string.IsNullOrWhiteSpace(uname) ? $"#{id}" : uname)</td>
+                        <td>@em</td>
+                        <td>@u.nome</td>
+                        <td>
+                            @if (estado == "bloqueado")
+                            {
+                                <span class="badge bg-danger">bloqueado</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">ativo</span>
+                            }
+
+                            @if (isAdminAtual)
+                            {
+                                <span class="badge bg-dark ms-1">admin</span>
+                            }
+                        </td>
+
+                        <td class="text-end">
+                            @* ✅ ADMIN ATUAL: só remover_admin *@
+                            @if (isAdminAtual)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-warning btn-removeradmin"
+                                        data-id="@id">
+                                    Remover admin
+                                </button>
+                            }
+                            else
+                            {
+                                @* ✅ NÃO ADMIN *@
+
+                                @* Se foi removido como admin e está bloqueado → só recuperar_admin *@
+                                @if (estado == "bloqueado" && foiRemovidoAdmin)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-success btn-recuperaradmin"
+                                            data-id="@id">
+                                        Recuperar admin
+                                    </button>
+                                }
+                                else
+                                {
+                                    @* Utilizador normal → bloquear/desbloquear *@
+                                    @if (estado == "ativo")
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-danger btn-bloquear"
+                                                data-id="@id">
+                                            Bloquear
+                                        </button>
+                                    }
+                                    else if (estado == "bloqueado")
+                                    {
+                                        <button type="button"
+                                                class="btn btn-sm btn-success btn-desbloquear"
+                                                data-id="@id">
+                                            Desbloquear
+                                        </button>
+                                    }
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

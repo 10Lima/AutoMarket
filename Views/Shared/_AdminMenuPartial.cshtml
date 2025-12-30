@@ -1,0 +1,27 @@
+﻿@using AutoMarket.Services
+@inject CurrentUserService CurrentUser
+
+@{
+    var isAdmin = await CurrentUser.IsAdminAsync(User);
+}
+
+@if (User.Identity?.IsAuthenticated == true && isAdmin)
+{
+    <li class="nav-item">
+        <a class="nav-link text-dark" asp-controller="AdminCandidaturas" asp-action="Index">Candidaturas</a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link text-dark" asp-controller="AdminAcoes" asp-action="Index">Histórico</a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link text-dark" asp-controller="AdminGestaoUtilizadores" asp-action="Index">Utilizadores</a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register" asp-route-mode="admin">
+            Registar admins
+        </a>
+    </li>
+}

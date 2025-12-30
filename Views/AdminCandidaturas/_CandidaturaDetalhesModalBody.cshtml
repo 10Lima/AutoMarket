@@ -1,0 +1,74 @@
+@model AutoMarket.Models.Market.Candidatura_Vendedor
+@using AutoMarket.Models.Market
+
+@{
+    var username = (ViewData["Username"] as string) ?? "";
+    var email = (ViewData["Email"] as string) ?? "";
+    var nome = (ViewData["Nome"] as string) ?? "";
+    var morada = ViewData["Morada"] as Morada;
+    var contactos = ViewData["Contactos"] as List<Utilizador_Contacto> ?? new List<Utilizador_Contacto>();
+}
+
+<div class="mb-3">
+    <h5 class="mb-1">@(!string.IsNullOrWhiteSpace(username) ? username : $"#@Model.id_utilizador")</h5>
+    <div class="text-muted">@email</div>
+    <div>@nome</div>
+</div>
+
+<hr />
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <h6>Dados da candidatura</h6>
+        <dl class="row mb-0">
+            <dt class="col-5">Tipo</dt>
+            <dd class="col-7">@Model.tipo</dd>
+
+            <dt class="col-5">NIF/NIPC</dt>
+            <dd class="col-7">@Model.NIF_NIPC</dd>
+
+            <dt class="col-5">Estado</dt>
+            <dd class="col-7">@Model.estado</dd>
+
+            <dt class="col-5">Data submissão</dt>
+            <dd class="col-7">@Model.data_submissao</dd>
+        </dl>
+    </div>
+
+    <div class="col-md-6">
+        <h6>Contactos</h6>
+
+        @if (contactos.Count == 0)
+        {
+            <div class="text-muted">Sem contactos registados.</div>
+        }
+        else
+        {
+            <ul class="mb-0">
+                @foreach (var c in contactos)
+                {
+                    <li><strong>@c.tipo</strong>: @c.valor</li>
+                }
+            </ul>
+        }
+
+        <hr />
+
+        <h6>Morada</h6>
+        @if (morada == null)
+        {
+            <div class="text-muted">Sem morada registada.</div>
+        }
+        else
+        {
+            <div>
+                @morada.endereco
+                @if (!string.IsNullOrWhiteSpace(morada.numero))
+                {
+                    <span>, @morada.numero</span>
+                }
+            </div>
+            <div>@morada.cod_postal</div>
+        }
+    </div>
+</div>
