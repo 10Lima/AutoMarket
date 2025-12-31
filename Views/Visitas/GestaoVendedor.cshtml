@@ -1,0 +1,66 @@
+@using AutoMarket.Models.Market
+@model List<Visita>
+
+@{
+    ViewData["Title"] = "Gestão de Visitas";
+}
+
+<div class="container mt-3">
+
+    <h3 class="mb-3">Gestão de Visitas</h3>
+
+    <form id="filtrosVisitas"
+          asp-controller="Visitas"
+          asp-action="ListaVisitas"
+          method="get"
+          data-ajax="true"
+          data-ajax-method="GET"
+          data-ajax-update="#listaVisitas"
+          data-ajax-mode="replace"
+          class="row g-2 mb-3">
+
+        <div class="col-12 col-md-4">
+            <label class="form-label mb-1">Estado</label>
+            <select class="form-select" name="estado" id="estadoSel">
+                <option value="pendente">Pendente</option>
+                <option value="agendada">Agendada</option>
+                <option value="rejeitada">Rejeitada</option>
+                <option value="cancelada">Cancelada</option>
+                <option value="realizada">Realizada</option>
+                <option value="todos">Todos</option>
+            </select>
+        </div>
+
+        <div class="col-12 col-md-5">
+            <label class="form-label mb-1">Ordenação</label>
+            <select class="form-select" name="ordem" id="ordemSel">
+                <option value="data_proxima">Data agendada mais próxima</option>
+                <option value="data_longe">Data agendada mais distante</option>
+                <option value="id_desc">Mais recente</option>
+                <option value="id_asc">Mais antiga</option>
+            </select>
+        </div>
+    </form>
+
+    <div id="listaVisitas">
+        <div class="alert alert-secondary">A carregar visitas…</div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+    (() => {
+        const f = document.getElementById("filtrosVisitas");
+        const e = document.getElementById("estadoSel");
+        const o = document.getElementById("ordemSel");
+
+        const submit = () => f.requestSubmit();
+
+        e.addEventListener("change", submit);
+        o.addEventListener("change", submit);
+
+        document.addEventListener("DOMContentLoaded", submit);
+    })();
+</script>
+}

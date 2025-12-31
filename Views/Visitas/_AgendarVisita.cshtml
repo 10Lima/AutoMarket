@@ -1,0 +1,42 @@
+@{
+    int idAnuncio = (int)(ViewBag.IdAnuncio ?? 0);
+    DateTime minDate = (DateTime)(ViewBag.MinDate ?? DateTime.Today);
+    DateTime maxDate = (DateTime)(ViewBag.MaxDate ?? DateTime.Today.AddDays(31));
+
+    string minStr = minDate.ToString("yyyy-MM-dd");
+    string maxStr = maxDate.ToString("yyyy-MM-dd");
+}
+
+<div class="alert alert-light border mb-0">
+    <h6 class="mb-2"><i class="bi bi-calendar-check"></i> Agendar Visita</h6>
+
+    <div class="text-danger mb-2">
+        @Html.ValidationSummary()
+    </div>
+
+    <form asp-controller="Visitas" asp-action="Agendar" method="post"
+          data-ajax="true"
+          data-ajax-method="POST"
+          data-ajax-update="#agendarSlot_@idAnuncio"
+          data-ajax-mode="replace">
+        @Html.AntiForgeryToken()
+
+        <input type="hidden" name="idAnuncio" value="@idAnuncio" />
+
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label mb-1">Data</label>
+                <input class="form-control" type="date" name="Data" min="@minStr" max="@maxStr" required />
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label mb-1">Hora (5 em 5 min)</label>
+                <input class="form-control" type="time" name="Hora" step="300" required />
+            </div>
+
+            <div class="col-12 col-md-2 d-grid">
+                <button class="btn btn-primary" type="submit">Submeter</button>
+            </div>
+        </div>
+    </form>
+</div>

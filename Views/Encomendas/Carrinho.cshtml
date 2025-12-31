@@ -5,49 +5,91 @@
 }
 
 <div class="container mt-3">
-    <h2>Carrinho</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Carrinho</h2>
+        <a class="btn btn-outline-secondary" asp-controller="Anuncios" asp-action="Carros">
+            Voltar aos carros
+        </a>
+    </div>
 
     @if (TempData["SucessoCompra"] != null)
     {
         <div class="alert alert-success alert-dismissible fade show">
-            @TempData["SucessoCompra"]
+            <i class="bi bi-check-circle"></i> @TempData["SucessoCompra"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["InfoCarrinho"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show">
+            <i class="bi bi-info-circle"></i> @TempData["InfoCarrinho"]
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
 
     @if (!Model.Any())
     {
-        <div class="alert alert-info mb-0">
-            Não existem encomendas pendentes.
+        <div class="alert alert-light border mb-0">
+            <i class="bi bi-cart-x"></i> Não existem encomendas pendentes.
         </div>
     }
     else
     {
-        <table class="table align-middle">
-            <thead>
-                <tr>
-                    <th>Anúncio</th>
-                    <th>Data</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach (var e in Model)
-            {
-                <tr>
-                    <td>@(e.id_anuncioNavigation?.titulo ?? $"Anúncio #{e.id_anuncio}")</td>
-                    <td>@e.data_encomenda.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                    <td class="text-end">
-                        <a class="btn btn-success"
-                           asp-controller="Encomendas"
-                           asp-action="Checkout"
-                           asp-route-id="@e.id_encomenda">
-                            Checkout
-                        </a>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
+        <div class="card">
+            <div class="card-header bg-light">
+                <strong>Encomendas pendentes</strong>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Anúncio</th>
+                            <th style="width:170px;">Data</th>
+                            <th style="width:200px;" class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var e in Model)
+                    {
+                        var titulo = e.id_anuncioNavigation?.titulo ?? $"Anúncio #{e.id_anuncio}";
+                        var preco = e.id_anuncioNavigation?.preco;
+
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@titulo</div>
+                                @if (preco.HasValue)
+                                {
+                                    <div class="text-muted small">@preco.Value.ToString("N2") €</div>
+                                }
+                            </td>
+
+                            <td>@e.data_encomenda.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+
+                            <td class="text-end">
+                                <a class="btn btn-success btn-sm"
+                                   asp-controller="Encomendas"
+                                   asp-action="Checkout"
+                                   asp-route-id="@e.id_encomenda">
+                                    <i class="bi bi-credit-card"></i> Checkout
+                                </a>
+
+                                <form asp-controller="Encomendas" asp-action="Cancelar" method="post"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Queres mesmo cancelar esta encomenda?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@e.id_encomenda" />
+                                    <input type="hidden" name="returnTo" value="Carrinho" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-x-circle"></i> Cancelar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     }
 </div>

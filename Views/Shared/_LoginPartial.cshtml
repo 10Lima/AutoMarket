@@ -2,80 +2,129 @@
 @using Microsoft.EntityFrameworkCore
 @inject SignInManager<IdentityUser> SignInManager
 @inject UserManager<IdentityUser> UserManager
-@inject AutoMarket.Services.CurrentUserService CurrentUser
 @inject AutoMarket.Data.MarketplaceDbContext MarketDb
 
 <ul class="navbar-nav">
-@if (SignInManager.IsSignedIn(User))
-{
-    var user = await UserManager.GetUserAsync(User);
-    var userName = user?.UserName ?? "Conta";
+    @if (SignInManager.IsSignedIn(User))
+    {
+        var user = await UserManager.GetUserAsync(User);
+        var userName = user?.UserName ?? "Conta";
 
-    var idMarketUser = await CurrentUser.GetMarketUserIdAsync(User);
-    var isVendedor = idMarketUser != null &&
-                     await MarketDb.Vendedor.AnyAsync(v => v.id_utilizador == idMarketUser.Value);
+        // ✅ ID do AspNetUsers
+        var identityId = UserManager.GetUserId(User);
 
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle"
-           href="#"
-           id="userMenu"
-           role="button"
-           data-bs-toggle="dropdown"
-           aria-expanded="false">
-            <i class="bi bi-person-circle"></i> @userName
-        </a>
+        // ✅ ID do market.Utilizador (via identity_user_id)
+        int? idMarketUser = null;
 
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-            <li>
-                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
-                    <i class="bi bi-person"></i> Dados pessoais
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Email">
-                    <i class="bi bi-envelope"></i> Email
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/ChangePassword">
-                    <i class="bi bi-key"></i> Alterar palavra-passe
-                </a>
-            </li>
+        if (!string.IsNullOrWhiteSpace(identityId))
+        {
+            idMarketUser = await MarketDb.Utilizador
+            .AsNoTracking()
+            .Where(u => u.identity_user_id == identityId)
+            .Select(u => (int?)u.id_utilizador)
+            .FirstOrDefaultAsync();
+        }
 
-            @if (isVendedor)
-            {
-                <li><hr class="dropdown-divider" /></li>
+        bool isVendedor = false;
+        bool isComprador = false;
+
+        if (idMarketUser != null)
+        {
+            isVendedor = await MarketDb.Vendedor
+            .AsNoTracking()
+            .AnyAsync(v => v.id_utilizador == idMarketUser.Value);
+
+            isComprador = await MarketDb.Comprador
+            .AsNoTracking()
+            .AnyAsync(c => c.id_utilizador == idMarketUser.Value);
+        }
+
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle"
+               href="#"
+               id="userMenu"
+               role="button"
+               data-bs-toggle="dropdown"
+               aria-expanded="false">
+                <i class="bi bi-person-circle"></i> @userName
+            </a>
+
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                 <li>
-                    <!-- ✅ CORRIGIR: apontar para "Meus" (não "_MeusLista") -->
-                    <a class="dropdown-item" asp-controller="Anuncios" asp-action="Meus">
-                        <i class="bi bi-card-list"></i> Os meus anúncios
+                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">
+                        <i class="bi bi-person"></i> Dados pessoais
                     </a>
                 </li>
-            }
+                <li>
+                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Email">
+                        <i class="bi bi-envelope"></i> Email
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/ChangePassword">
+                        <i class="bi bi-key"></i> Alterar palavra-passe
+                    </a>
+                </li>
 
-            <li><hr class="dropdown-divider" /></li>
+                @* ====== COMPRADOR ====== *@
+                @if (isComprador)
+                {
+                    <li><hr class="dropdown-divider" /></li>
 
-            <li>
-                <form class="dropdown-item p-0 m-0"
-                      asp-area="Identity"
-                      asp-page="/Account/Logout"
-                      asp-route-returnUrl="@Url.Action("Index","Home")"
-                      method="post">
-                    <button type="submit" class="btn btn-link dropdown-item">
-                        <i class="bi bi-box-arrow-right"></i> Sair
-                    </button>
-                </form>
-            </li>
-        </ul>
-    </li>
-}
-else
-{
-    <li class="nav-item">
-        <a class="nav-link" asp-area="Identity" asp-page="/Account/Login">Entrar</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" asp-area="Identity" asp-page="/Account/Register">Registar</a>
-    </li>
-}
+                    <li>
+                        <a class="dropdown-item" asp-controller="Anuncios" asp-action="MinhasOperacoes">
+                            <i class="bi bi-clipboard-check"></i> Minhas Operações
+                        </a>
+                    </li>
+
+                    <li>
+                        <a class="dropdown-item" asp-controller="Encomendas" asp-action="Carrinho">
+                            <i class="bi bi-cart3"></i> Carrinho
+                        </a>
+                    </li>
+                }
+
+                @* ====== VENDEDOR ====== *@
+                @if (isVendedor)
+                {
+                    <li><hr class="dropdown-divider" /></li>
+
+                    <li>
+                        <a class="dropdown-item" asp-controller="Anuncios" asp-action="Meus">
+                            <i class="bi bi-card-list"></i> Os meus anúncios
+                        </a>
+                    </li>
+
+                    <li>
+                        <a class="dropdown-item" asp-controller="Visitas" asp-action="GestaoVendedor">
+                            <i class="bi bi-calendar2-check"></i> Gestão de visitas
+                        </a>
+                    </li>
+                }
+
+                <li><hr class="dropdown-divider" /></li>
+
+                <li>
+                    <form class="dropdown-item p-0 m-0"
+                          asp-area="Identity"
+                          asp-page="/Account/Logout"
+                          asp-route-returnUrl="@Url.Action("Index", "Home")"
+                          method="post">
+                        <button type="submit" class="btn btn-link dropdown-item">
+                            <i class="bi bi-box-arrow-right"></i> Sair
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link" asp-area="Identity" asp-page="/Account/Login">Entrar</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" asp-area="Identity" asp-page="/Account/Register">Registar</a>
+        </li>
+    }
 </ul>
