@@ -421,9 +421,6 @@ public class AnunciosController : Controller
         ViewBag.Sort = sort ?? "recent";
 
         return View();
-
-
-        return View();
     }
 
 
@@ -1686,6 +1683,9 @@ public class AnunciosController : Controller
         var encomendas = await _marketDb.Encomenda
             .AsNoTracking()
             .Where(e => e.id_utilizador == idUtil.Value)
+            .Include(e => e.id_anuncioNavigation)
+                .ThenInclude(a => a.Anuncio_Imagem)
+                .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
             .OrderByDescending(e => e.data_encomenda)
             .ToListAsync();
 

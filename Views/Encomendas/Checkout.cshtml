@@ -10,15 +10,195 @@
     <div class="card mb-3">
         <div class="card-body">
             <div><strong>Anúncio:</strong> @(Model.id_anuncioNavigation?.titulo ?? $"#{Model.id_anuncio}")</div>
-            <div><strong>Método:</strong> Cartão</div>
+            <div><strong>Preço:</strong> @(Model.id_anuncioNavigation?.preco?.ToString("N2") ?? "—") €</div>
+            <div><strong>Método:</strong> Cartão de crédito/débito</div>
         </div>
     </div>
 
-    <form asp-controller="Encomendas" asp-action="Adicionar" method="post" class="d-grid">
+    <form asp-controller="Encomendas" asp-action="Checkout" asp-route-id="@Model.id_encomenda" method="post">
         @Html.AntiForgeryToken()
-        <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
-        <button class="btn btn-success btn-lg" type="submit">
-            <i class="bi bi-cart-check"></i> Comprar
-        </button>
+
+        <div class="text-danger mb-2">
+            @Html.ValidationSummary()
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Titular do cartão</label>
+            <input id="titular"
+                   name="TitularCartao"
+                   class="form-control"
+                   required
+                   maxlength="80"
+                   autocomplete="cc-name"
+                   style="text-transform: uppercase;" />
+            <div class="form-text">Apenas letras sem acentos (ex: JOAO SILVA)</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Número do cartão</label>
+            <input id="pan"
+                   name="NumeroCartao"
+                   class="form-control"
+                   required
+                   inputmode="numeric"
+                   autocomplete="cc-number"
+                   maxlength="19"
+                   placeholder="0000 0000 0000 0000" />
+            <div class="form-text">16 dígitos (formato 0000 0000 0000 0000)</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Validade (MM/YY)</label>
+                <input id="validade"
+                       name="Validade"
+                       class="form-control"
+                       required
+                       inputmode="numeric"
+                       autocomplete="cc-exp"
+                       maxlength="5"
+                       placeholder="MM/YY" />
+                <div class="form-text">Ex.: 12/27</div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Código de segurança (CVV)</label>
+                <input id="cvv"
+                       name="Cvv"
+                       class="form-control"
+                       required
+                       inputmode="numeric"
+                       maxlength="3"
+                       autocomplete="cc-csc"
+                       placeholder="000" />
+                <div class="form-text">3 dígitos</div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-success" type="submit">
+                Finalizar Compra
+            </button>
+            <a class="btn btn-secondary" asp-controller="Encomendas" asp-action="Carrinho">
+                Voltar
+            </a>
+        </div>
     </form>
 </div>
+
+@section Scripts {
+<script>
+(function () {
+
+  // ---------- helpers ----------
+  function onlyDigits(s) {
+    return (s || "").replace(/\D/g, "");
+  }
+
+  function removeAccents(s) {
+    return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  // ---------- TITULAR ----------
+  const titular = document.getElementById("titular");
+  if (titular) {
+    titular.addEventListener("input", function () {
+      let v = removeAccents(this.value);
+      v = v.toUpperCase();
+      v = v.replace(/[^A-Z '\-]/g, "");
+      v = v.replace(/\s{2,}/g, " ");
+      this.value = v;
+    });
+  }
+
+  // ---------- PAN (0000 0000 0000 0000) ----------
+  const pan = document.getElementById("pan");
+  if (pan) {
+    pan.addEventListener("input", function () {
+      let d = onlyDigits(this.value).slice(0, 16);
+      let parts = d.match(/.{1,4}/g) || [];
+      this.value = parts.join(" ");
+    });
+
+    pan.addEventListener("keydown", function (e) {
+      const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"];
+      if (allowed.includes(e.key)) return;
+      if (e.ctrlKey || e.metaKey) return;
+      if (!/^\d$/.test(e.key)) e.preventDefault();
+    });
+  }
+
+  // ---------- VALIDADE (MM/YY) com "/" fixo ----------
+  const validade = document.getElementById("validade");
+  if (validade) {
+
+    function formatValidade(rawDigits) {
+      let d = onlyDigits(rawDigits).slice(0, 4);
+      let mm = d.substring(0, 2);
+      let yy = d.substring(2, 4);
+
+      if (mm.length === 2) {
+        return yy.length ? (mm + "/" + yy) : (mm + "/");
+      }
+      return mm;
+    }
+
+    validade.addEventListener("input", function () {
+      const before = this.value;
+      const digits = onlyDigits(before);
+      this.value = formatValidade(digits);
+    });
+
+    validade.addEventListener("keydown", function (e) {
+      const allowed = ["ArrowLeft", "ArrowRight", "Tab", "Home", "End"];
+      if (allowed.includes(e.key)) return;
+      if (e.ctrlKey || e.metaKey) return;
+
+      if (/^\d$/.test(e.key)) return;
+
+      if (e.key === "Backspace") {
+        const pos = this.selectionStart;
+        if (pos === 3 && this.value[2] === "/") {
+          e.preventDefault();
+          let d = onlyDigits(this.value);
+          d = d.substring(0, 1) + d.substring(2);
+          this.value = formatValidade(d);
+          requestAnimationFrame(() => this.setSelectionRange(1, 1));
+        }
+        return;
+      }
+
+      if (e.key === "Delete") {
+        const pos = this.selectionStart;
+        if (pos === 2 && this.value[2] === "/") {
+          e.preventDefault();
+          let d = onlyDigits(this.value);
+          d = d.substring(0, 2) + d.substring(3);
+          this.value = formatValidade(d);
+          requestAnimationFrame(() => this.setSelectionRange(2, 2));
+        }
+        return;
+      }
+
+      e.preventDefault();
+    });
+  }
+
+  // ---------- CVV: só dígitos e máx 3 ----------
+  const cvv = document.getElementById("cvv");
+  if (cvv) {
+    cvv.addEventListener("input", function () {
+      this.value = onlyDigits(this.value).slice(0, 3);
+    });
+
+    cvv.addEventListener("keydown", function (e) {
+      const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"];
+      if (allowed.includes(e.key)) return;
+      if (e.ctrlKey || e.metaKey) return;
+      if (!/^\d$/.test(e.key)) e.preventDefault();
+    });
+  }
+
+})();
+</script>
+}

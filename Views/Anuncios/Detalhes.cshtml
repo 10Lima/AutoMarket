@@ -268,6 +268,10 @@
         {
             <div class="card">
                 <div class="card-body">
+
+                    @* ✅ NOVO: Aqui aparece a Partial View do agendamento *@
+                    <div id="visitaContainer"></div>
+
                     @if (!isAuth)
                     {
                         var returnUrl = Url.Action("Detalhes", "Anuncios", new { id = Model.id_anuncio });
@@ -294,8 +298,8 @@
                     }
                     else if (isComprador)
                     {
-                        @* Caso A: reservado por este utilizador *@
-                        if (isReservado && hasMyActiveReserva && myReservaId != null)
+                        @* Caso A: Anúncio reservado por este utilizador *@
+                        @if (isReservado && hasMyActiveReserva && myReservaId != null)
                         {
                             <div class="d-grid gap-2">
                                 <form asp-action="CancelarReserva" asp-controller="Anuncios" method="post"
@@ -307,9 +311,18 @@
                                     </button>
                                 </form>
 
-                                <button class="btn btn-outline-primary btn-lg" type="button" disabled>
-                                    <i class="bi bi-calendar-check"></i> Agendar Visita
-                                </button>
+                                <div id="agendarSlot_@Model.id_anuncio">
+                                    <form asp-controller="Visitas" asp-action="FormAgendar" method="get"
+                                          data-ajax="true"
+                                          data-ajax-method="GET"
+                                          data-ajax-update="#agendarSlot_@Model.id_anuncio"
+                                          data-ajax-mode="replace">
+                                        <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
+                                        <button class="btn btn-outline-primary btn-lg w-100" type="submit">
+                                            <i class="bi bi-calendar-check"></i> Agendar Visita
+                                        </button>
+                                    </form>
+                                </div>
 
                                 <form asp-controller="Encomendas" asp-action="Adicionar" method="post">
                                     @Html.AntiForgeryToken()
@@ -318,13 +331,9 @@
                                         <i class="bi bi-cart-check"></i> Comprar
                                     </button>
                                 </form>
-
-                                <div class="alert alert-info mt-2 mb-0">
-                                    <i class="bi bi-info-circle"></i> Agendar visita ainda em desenvolvimento
-                                </div>
                             </div>
                         }
-                        @* Caso B: ativo *@
+                        @* Caso B: Anúncio ativo *@
                         else if (isAtivo)
                         {
                             <div class="d-grid gap-2">
@@ -336,9 +345,18 @@
                                     </button>
                                 </form>
 
-                                <button class="btn btn-outline-primary btn-lg" type="button" disabled>
-                                    <i class="bi bi-calendar-check"></i> Agendar Visita
-                                </button>
+                                <div id="agendarSlot_@Model.id_anuncio">
+                                    <form asp-controller="Visitas" asp-action="FormAgendar" method="get"
+                                          data-ajax="true"
+                                          data-ajax-method="GET"
+                                          data-ajax-update="#agendarSlot_@Model.id_anuncio"
+                                          data-ajax-mode="replace">
+                                        <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
+                                        <button class="btn btn-outline-primary btn-lg w-100" type="submit">
+                                            <i class="bi bi-calendar-check"></i> Agendar Visita
+                                        </button>
+                                    </form>
+                                </div>
 
                                 <form asp-controller="Encomendas" asp-action="Adicionar" method="post">
                                     @Html.AntiForgeryToken()
@@ -347,12 +365,9 @@
                                         <i class="bi bi-cart-check"></i> Comprar
                                     </button>
                                 </form>
-
-                                <div class="alert alert-info mt-2 mb-0">
-                                    <i class="bi bi-info-circle"></i> Agendar visita ainda em desenvolvimento
-                                </div>
                             </div>
                         }
+                        @* Outros estados *@
                         else
                         {
                             <div class="alert alert-warning mb-0">
