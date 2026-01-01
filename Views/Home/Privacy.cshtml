@@ -1,6 +1,132 @@
 ﻿@{
-    ViewData["Title"] = "Privacy Policy";
+    ViewData["Title"] = "Política de Privacidade";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<div class="register-page">
+    <div class="register-card">
+
+        <h1 class="page-title mb-4">@ViewData["Title"]</h1>
+
+        <p class="text-muted">
+            A tua privacidade é importante para nós. Esta Política de Privacidade explica como recolhemos,
+            utilizamos e protegemos os teus dados pessoais na plataforma <strong>AutoMarket</strong>.
+        </p>
+
+        <hr class="my-4" />
+
+        <h4>1. Quem somos</h4>
+        <p>
+            A <strong>AutoMarket</strong> é uma plataforma digital dedicada à compra e venda de veículos,
+            permitindo a ligação entre compradores e vendedores de forma simples, segura e transparente.
+        </p>
+
+        <h4>2. Dados que recolhemos</h4>
+        <p>
+            Podemos recolher os seguintes dados pessoais:
+        </p>
+        <ul>
+            <li>Nome, endereço de email e contactos</li>
+            <li>Dados de autenticação (username e password encriptada)</li>
+            <li>Informações fornecidas em candidaturas a vendedor</li>
+            <li>Dados relacionados com anúncios e transações</li>
+        </ul>
+
+        <h4>3. Finalidade do tratamento dos dados</h4>
+        <p>
+            Os dados recolhidos são utilizados para:
+        </p>
+        <ul>
+            <li>Gerir contas de utilizador</li>
+            <li>Permitir a publicação e gestão de anúncios</li>
+            <li>Processar candidaturas a vendedor</li>
+            <li>Comunicar informações relevantes sobre a plataforma</li>
+            <li>Garantir a segurança e prevenção de fraude</li>
+        </ul>
+
+        <h4>4. Partilha de dados</h4>
+        <p>
+            A AutoMarket não vende nem partilha dados pessoais com terceiros, exceto quando tal é exigido por lei
+            ou estritamente necessário para o funcionamento do serviço.
+        </p>
+
+        <h4>5. Segurança</h4>
+        <p>
+            Implementamos medidas técnicas e organizativas adequadas para proteger os teus dados pessoais contra
+            acessos não autorizados, perda ou divulgação indevida.
+        </p>
+
+        <h4>6. Direitos do utilizador</h4>
+        <p>
+            Tens o direito de:
+        </p>
+        <ul>
+            <li>Aceder aos teus dados pessoais</li>
+            <li>Solicitar a correção ou eliminação dos dados</li>
+            <li>Retirar o consentimento para o tratamento de dados</li>
+        </ul>
+
+        <h4>7. Alterações a esta política</h4>
+        <p>
+            A AutoMarket pode atualizar esta Política de Privacidade periodicamente. Quaisquer alterações
+            relevantes serão comunicadas através da plataforma.
+        </p>
+
+        <h4>8. Contactos</h4>
+        <p>
+            Para qualquer questão relacionada com a privacidade dos teus dados, podes contactar-nos através
+            dos meios disponibilizados na plataforma.
+        </p>
+
+    </div>
+</div>
+
+<style>
+    /* ===== FULL WIDTH / IGUAL ÀS OUTRAS PÁGINAS ===== */
+    .register-page {
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        background-color: #f5f5f5;
+        min-height: calc(100vh - 70px);
+        padding: 32px 20px;
+    }
+
+    /* ===== CARD ===== */
+    .register-card {
+        background-color: #ffffff;
+        border-radius: 14px;
+        padding: 40px;
+        width: 100%;
+        max-width: 1000px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    /* ===== TÍTULOS ===== */
+    .page-title {
+        font-weight: 700;
+        color: #111;
+    }
+
+    .register-card h4 {
+        margin-top: 24px;
+        font-weight: 650;
+        color: #111;
+    }
+
+    /* ===== TEXTO ===== */
+    .register-card p,
+    .register-card li {
+        color: #333;
+        line-height: 1.6;
+    }
+
+    /* ===== MOBILE ===== */
+    @@media (max-width: 576px) {
+        .register-card
+
+    {
+        padding: 22px;
+    }
+
+    }
+</style>

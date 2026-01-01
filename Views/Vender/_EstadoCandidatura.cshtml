@@ -5,77 +5,248 @@
     var estado = (Model.estado ?? "").Trim().ToLowerInvariant();
 }
 
-<div class="mb-3">
-    <span class="badge bg-secondary">@Model.estado</span>
-</div>
+<div class="register-page">
+    <div class="register-card">
 
-<div class="card">
-    <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3">Tipo</dt>
-            <dd class="col-sm-9">@Model.tipo</dd>
+        <!-- TÍTULO ÚNICO (REMOVIDO O DUPLICADO DE CIMA) -->
+        <h1 class="page-title mb-3">Estado da candidatura</h1>
 
-            <dt class="col-sm-3">NIF/NIPC</dt>
-            <dd class="col-sm-9">@Model.NIF_NIPC</dd>
+        <div class="card card-soft mb-3">
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Estado</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge badge-state badge-@estado">
+                            @Model.estado
+                        </span>
+                    </dd>
 
-            <dt class="col-sm-3">Data submissão</dt>
-            <dd class="col-sm-9">@Model.data_submissao.ToString("dd/MM/yyyy HH:mm")</dd>
-        </dl>
-    </div>
-</div>
+                    <dt class="col-sm-3">Tipo</dt>
+                    <dd class="col-sm-9">@Model.tipo</dd>
 
-@if (estado == "pendente")
-{
-    <div class="alert alert-info mt-3">
-        <i class="bi bi-info-circle"></i> A tua candidatura está em análise.
-    </div>
+                    <dt class="col-sm-3">NIF/NIPC</dt>
+                    <dd class="col-sm-9">@Model.NIF_NIPC</dd>
 
-    <form method="post"
-          asp-action="Cancelar"
-          data-ajax="true"
-          data-ajax-method="post"
-          data-ajax-mode="replace"
-          data-ajax-update="#estadoArea"
-          onsubmit="return confirm('Tens a certeza que queres cancelar a candidatura?');"
-          class="mt-3">
-        @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-danger">Cancelar candidatura</button>
-    </form>
-}
-else if (estado == "rejeitada")
-{
-    <div class="alert alert-danger mt-3">
-        <i class="bi bi-x-circle"></i> A candidatura foi rejeitada.
-        @if (!string.IsNullOrWhiteSpace(motivo))
+                    <dt class="col-sm-3">Data submissão</dt>
+                    <dd class="col-sm-9">
+                        @Model.data_submissao.ToString("dd/MM/yyyy HH:mm")
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (estado == "pendente")
         {
-            <div class="mt-2"><strong>Motivo:</strong> @motivo</div>
+            <div class="alert alert-info alert-soft">
+                <i class="bi bi-info-circle"></i>
+                A tua candidatura está em análise.
+            </div>
+
+            <form method="post"
+                  asp-action="Cancelar"
+                  data-ajax="true"
+                  data-ajax-method="post"
+                  data-ajax-mode="replace"
+                  data-ajax-update="#estadoArea"
+                  onsubmit="return confirm('Tens a certeza que queres cancelar a candidatura?');"
+                  class="mt-3">
+                @Html.AntiForgeryToken()
+
+                <button type="submit"
+                        class="btn btn-danger btn-soft-danger">
+                    Cancelar candidatura
+                </button>
+            </form>
         }
-    </div>
+        else if (estado == "rejeitada")
+        {
+            <div class="alert alert-danger alert-soft">
+                <i class="bi bi-x-circle"></i>
+                A candidatura foi rejeitada.
+                @if (!string.IsNullOrWhiteSpace(motivo))
+                {
+                    <div class="mt-2">
+                        <strong>Motivo:</strong> @motivo
+                    </div>
+                }
+            </div>
 
-    <div class="mt-3 d-flex gap-2">
-        <a class="btn btn-primary" asp-action="Candidatar" asp-route-nova="1">Submeter nova candidatura</a>
-        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Voltar à página inicial</a>
-    </div>
-}
-else if (estado == "cancelada")
-{
-    <div class="alert alert-warning mt-3">
-        <i class="bi bi-exclamation-triangle"></i> A candidatura foi cancelada.
-    </div>
+            <div class="mt-3 d-flex gap-2 flex-wrap">
+                <a class="btn btn-dark-custom"
+                   asp-action="Candidatar"
+                   asp-route-nova="1">
+                    Submeter nova candidatura
+                </a>
 
-    <div class="mt-3 d-flex gap-2">
-        <a class="btn btn-primary" asp-action="Candidatar" asp-route-nova="1">Submeter nova candidatura</a>
-        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Voltar à página inicial</a>
-    </div>
-}
-else if (estado == "aprovada")
-{
-    <div class="alert alert-success mt-3">
-        <i class="bi bi-check-circle"></i> A candidatura foi aprovada. Já podes começar a vender!
-    </div>
+                <a class="btn btn-outline-dark-custom"
+                   asp-controller="Home"
+                   asp-action="Index">
+                    Voltar à página inicial
+                </a>
+            </div>
+        }
+        else if (estado == "cancelada")
+        {
+            <div class="alert alert-warning alert-soft">
+                <i class="bi bi-exclamation-triangle"></i>
+                A candidatura foi cancelada.
+            </div>
 
-    <div class="mt-3 d-flex gap-2">
-        <a class="btn btn-primary" asp-controller="Anuncios" asp-action="Criar">Criar anúncio</a>
-        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Voltar à página inicial</a>
+            <div class="mt-3 d-flex gap-2 flex-wrap">
+                <a class="btn btn-dark-custom"
+                   asp-action="Candidatar"
+                   asp-route-nova="1">
+                    Submeter nova candidatura
+                </a>
+
+                <a class="btn btn-outline-dark-custom"
+                   asp-controller="Home"
+                   asp-action="Index">
+                    Voltar à página inicial
+                </a>
+            </div>
+        }
+        else if (estado == "aprovada")
+        {
+            <div class="alert alert-success alert-soft">
+                <i class="bi bi-check-circle"></i>
+                A candidatura foi aprovada. Já podes começar a vender!
+            </div>
+
+            <div class="mt-3 d-flex gap-2 flex-wrap">
+                <a class="btn btn-dark-custom"
+                   asp-controller="Anuncios"
+                   asp-action="Criar">
+                    Criar anúncio
+                </a>
+
+                <a class="btn btn-outline-dark-custom"
+                   asp-controller="Home"
+                   asp-action="Index">
+                    Voltar à página inicial
+                </a>
+            </div>
+        }
+
     </div>
-}
+</div>
+
+<style>
+    /* ===== FULL WIDTH ===== */
+    .register-page {
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        background-color: #f5f5f5;
+        min-height: calc(100vh - 70px);
+        padding: 32px 20px;
+    }
+
+    /* ===== CARD PRINCIPAL ===== */
+    .register-card {
+        background-color: #ffffff;
+        border-radius: 14px;
+        padding: 40px;
+        max-width: 1000px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    /* ===== TÍTULO ===== */
+    .page-title {
+        font-weight: 700;
+        color: #111;
+        margin-bottom: 16px;
+    }
+
+    /* ===== CARD INTERNO ===== */
+    .card-soft {
+        border: 1px solid rgba(0,0,0,0.06);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+    }
+
+    /* ===== BADGE ===== */
+    .badge-state {
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-weight: 650;
+        text-transform: capitalize;
+        display: inline-block;
+    }
+
+    .badge-pendente {
+        background: #facc15;
+        color: #111;
+    }
+
+    .badge-aprovada {
+        background: #16a34a;
+        color: #fff;
+    }
+
+    .badge-rejeitada {
+        background: #dc2626;
+        color: #fff;
+    }
+
+    .badge-cancelada {
+        background: #f97316;
+        color: #fff;
+    }
+
+    .badge- {
+        background: #111;
+        color: #fff;
+    }
+
+    /* ===== ALERTAS ===== */
+    .alert-soft {
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.06);
+        box-shadow: 0 8px 22px rgba(0,0,0,0.04);
+    }
+
+    /* ===== BOTÕES ===== */
+    .btn-dark-custom {
+        background: #000;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-weight: 600;
+    }
+
+        .btn-dark-custom:hover {
+            background: #1b1b1b;
+            color: #fff;
+        }
+
+    .btn-outline-dark-custom {
+        border: 2px solid #000;
+        color: #000;
+        background: transparent;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 600;
+    }
+
+        .btn-outline-dark-custom:hover {
+            background: #000;
+            color: #fff;
+        }
+
+    .btn-soft-danger {
+        border-radius: 12px;
+        font-weight: 650;
+    }
+
+    /* ===== MOBILE ===== */
+    @@media (max-width: 576px) {
+        .register-card
+
+    {
+        padding: 22px;
+    }
+
+    }
+</style>

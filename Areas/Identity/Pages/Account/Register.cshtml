@@ -4,137 +4,283 @@
     ViewData["Title"] = Model.IsAdminRegistration ? "Registar administrador" : "Registar";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="register-page">
+    <div class="register-card">
+        <h1 class="text-center mb-4">@ViewData["Title"]</h1>
 
-@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
-{
-    <div class="alert alert-success">@Model.StatusMessage</div>
-}
+        @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+        {
+            <div class="alert alert-success">@Model.StatusMessage</div>
+        }
 
-<div class="row">
-    <div class="col-md-6">
-        <form id="registerForm"
-              asp-route-returnUrl="@Model.ReturnUrl"
-              asp-route-admin="@Model.IsAdminRegistration"
-              method="post">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <form id="registerForm"
+                      asp-route-returnUrl="@Model.ReturnUrl"
+                      asp-route-admin="@Model.IsAdminRegistration"
+                      method="post">
 
-            <h2>@(Model.IsAdminRegistration ? "Criar conta de administrador" : "Criar conta")</h2>
-            <hr />
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <h2 class="h4 mb-3">@(Model.IsAdminRegistration ? "Criar conta de administrador" : "Criar conta")</h2>
+                    <hr class="mb-4" />
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-            <!-- Identity -->
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Username" class="form-control" autocomplete="username" aria-required="true" />
-                <label asp-for="Input.Username"></label>
-                <span asp-validation-for="Input.Username" class="text-danger"></span>
-            </div>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Email" class="form-control" autocomplete="email" aria-required="true" />
-                <label asp-for="Input.Email"></label>
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
-            </div>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" />
-                <label asp-for="Input.Password"></label>
-                <span asp-validation-for="Input.Password" class="text-danger"></span>
-            </div>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" />
-                <label asp-for="Input.ConfirmPassword"></label>
-                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
-            </div>
-
-            <!-- Marketplace -->
-            <h4 class="mt-4">Dados do perfil</h4>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Nome" class="form-control" aria-required="true" />
-                <label asp-for="Input.Nome"></label>
-                <span asp-validation-for="Input.Nome" class="text-danger"></span>
-            </div>
-
-            <div class="mb-3">
-                <label asp-for="Input.CanalNotificacaoPreferido" class="form-label"></label>
-                <select asp-for="Input.CanalNotificacaoPreferido" class="form-select">
-                    <option value="email">email</option>
-                    <option value="sms">sms</option>
-                </select>
-                <span asp-validation-for="Input.CanalNotificacaoPreferido" class="text-danger"></span>
-            </div>
-
-            <div class="form-check mb-3">
-                <input asp-for="Input.NotificarNovidades" class="form-check-input" />
-                <label asp-for="Input.NotificarNovidades" class="form-check-label"></label>
-                <span asp-validation-for="Input.NotificarNovidades" class="text-danger"></span>
-            </div>
-
-            <h4 class="mt-4">Morada</h4>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Endereco" class="form-control" aria-required="true" />
-                <label asp-for="Input.Endereco"></label>
-                <span asp-validation-for="Input.Endereco" class="text-danger"></span>
-            </div>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Numero" class="form-control" />
-                <label asp-for="Input.Numero"></label>
-                <span asp-validation-for="Input.Numero" class="text-danger"></span>
-            </div>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.CodigoPostal" class="form-control" placeholder="1234-567" aria-required="true" />
-                <label asp-for="Input.CodigoPostal"></label>
-                <span asp-validation-for="Input.CodigoPostal" class="text-danger"></span>
-            </div>
-
-            <h4 class="mt-4">Contactos</h4>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Contacto1Valor" class="form-control" aria-required="true" />
-                <label asp-for="Input.Contacto1Valor"></label>
-                <span asp-validation-for="Input.Contacto1Valor" class="text-danger"></span>
-            </div>
-
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Contacto2Valor" class="form-control" />
-                <label asp-for="Input.Contacto2Valor"></label>
-                <span asp-validation-for="Input.Contacto2Valor" class="text-danger"></span>
-            </div>
-
-            <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary">
-                @(Model.IsAdminRegistration ? "Registar administrador" : "Registar")
-            </button>
-        </form>
-    </div>
-
-    <div class="col-md-6">
-        <section>
-            <h3>Ou usa um serviço externo</h3>
-            <hr />
-
-            @if (!Model.IsAdminRegistration && Model.ExternalLogins?.Count > 0)
-            {
-                <form asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
-                    <div>
-                        <p>
-                            @foreach (var provider in Model.ExternalLogins)
-                            {
-                                <button type="submit" class="btn btn-outline-primary" name="provider" value="@provider.Name">
-                                    @provider.DisplayName
-                                </button>
-                            }
-                        </p>
+                    <!-- Identity -->
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Username" class="form-control" autocomplete="username" aria-required="true" />
+                        <label asp-for="Input.Username"></label>
+                        <span asp-validation-for="Input.Username" class="text-danger"></span>
                     </div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Email" class="form-control" autocomplete="email" aria-required="true" />
+                        <label asp-for="Input.Email"></label>
+                        <span asp-validation-for="Input.Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" />
+                        <label asp-for="Input.Password"></label>
+                        <span asp-validation-for="Input.Password" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" />
+                        <label asp-for="Input.ConfirmPassword"></label>
+                        <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+                    </div>
+
+                    <!-- Marketplace -->
+                    <h4 class="mt-4 mb-3 section-title">Dados do perfil</h4>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Nome" class="form-control" aria-required="true" />
+                        <label asp-for="Input.Nome"></label>
+                        <span asp-validation-for="Input.Nome" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Input.CanalNotificacaoPreferido" class="form-label"></label>
+                        <select asp-for="Input.CanalNotificacaoPreferido" class="form-select">
+                            <option value="email">email</option>
+                            <option value="sms">sms</option>
+                        </select>
+                        <span asp-validation-for="Input.CanalNotificacaoPreferido" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="Input.NotificarNovidades" class="form-check-input" />
+                        <label asp-for="Input.NotificarNovidades" class="form-check-label"></label>
+                        <span asp-validation-for="Input.NotificarNovidades" class="text-danger"></span>
+                    </div>
+
+                    <h4 class="mt-4 mb-3 section-title">Morada</h4>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Endereco" class="form-control" aria-required="true" />
+                        <label asp-for="Input.Endereco"></label>
+                        <span asp-validation-for="Input.Endereco" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Numero" class="form-control" />
+                        <label asp-for="Input.Numero"></label>
+                        <span asp-validation-for="Input.Numero" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.CodigoPostal" class="form-control" placeholder="1234-567" aria-required="true" />
+                        <label asp-for="Input.CodigoPostal"></label>
+                        <span asp-validation-for="Input.CodigoPostal" class="text-danger"></span>
+                    </div>
+
+                    <h4 class="mt-4 mb-3 section-title">Contactos</h4>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Input.Contacto1Valor" class="form-control" aria-required="true" />
+                        <label asp-for="Input.Contacto1Valor"></label>
+                        <span asp-validation-for="Input.Contacto1Valor" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-floating mb-4">
+                        <input asp-for="Input.Contacto2Valor" class="form-control" />
+                        <label asp-for="Input.Contacto2Valor"></label>
+                        <span asp-validation-for="Input.Contacto2Valor" class="text-danger"></span>
+                    </div>
+
+                    <button id="registerSubmit"
+                            type="submit"
+                            class="w-100 btn btn-dark-custom btn-lg">
+                        @(Model.IsAdminRegistration ? "Registar administrador" : "Registar")
+                    </button>
                 </form>
-            }
-        </section>
+            </div>
+
+            <div class="col-md-6">
+                <section class="external-card">
+                    <h3 class="h5 mb-3">Ou usa um serviço externo</h3>
+                    <hr class="mb-3" />
+
+                    @if (!Model.IsAdminRegistration && Model.ExternalLogins?.Count > 0)
+                    {
+                        <form asp-page="./ExternalLogin"
+                              asp-route-returnUrl="@Model.ReturnUrl"
+                              method="post"
+                              class="form-horizontal">
+                            <div>
+                                <p class="d-flex flex-wrap gap-2 mb-0">
+                                    @foreach (var provider in Model.ExternalLogins)
+                                    {
+                                        <button type="submit"
+                                                class="btn btn-outline-dark-custom"
+                                                name="provider"
+                                                value="@provider.Name">
+                                            @provider.DisplayName
+                                        </button>
+                                    }
+                                </p>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">
+                            Não há métodos externos disponíveis.
+                        </p>
+                    }
+                </section>
+            </div>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
+
+<style>
+    /* ===== FULL WIDTH / BREAK OUT DO .container DO LAYOUT ===== */
+    .register-page {
+        width: 100vw;
+        margin-left: calc(50% - 50vw); /* força full width mesmo dentro do .container */
+        background-color: #f5f5f5;
+        min-height: calc(100vh - 70px); /* ajusta se a navbar tiver outra altura */
+        padding: 32px 20px;
+    }
+
+    /* ===== CARD ===== */
+    .register-card {
+        background-color: #ffffff;
+        border-radius: 14px;
+        padding: 40px;
+        width: 100%;
+        max-width: 1400px; /* aumenta área útil sem ficar demasiado largo */
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    /* em monitores grandes usa mais largura (fica mais "full") */
+    @@media (min-width: 1200px) {
+        .register-card
+
+    {
+        max-width: 1600px;
+    }
+
+    }
+
+    /* ===== TÍTULOS ===== */
+    .register-card h1,
+    .register-card h2,
+    .register-card h3,
+    .register-card h4 {
+        color: #111;
+        font-weight: 650;
+    }
+
+    .section-title {
+        font-size: 1.05rem;
+    }
+
+    /* ===== INPUTS ===== */
+    .form-control,
+    .form-select {
+        border-radius: 10px;
+        border: 1px solid #d0d0d0;
+    }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #000;
+            box-shadow: 0 0 0 0.15rem rgba(0, 0, 0, 0.12);
+        }
+
+    /* ===== CHECKBOX ===== */
+    .form-check-input:checked {
+        background-color: #000;
+        border-color: #000;
+    }
+
+    .form-check-input:focus {
+        box-shadow: 0 0 0 0.15rem rgba(0, 0, 0, 0.12);
+    }
+
+    /* ===== BOTÃO PRINCIPAL PRETO (LETRA BRANCA) ===== */
+    .btn-dark-custom {
+        background-color: #000;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-weight: 600;
+        transition: transform 0.08s ease-in-out, background-color 0.15s ease-in-out;
+    }
+
+        .btn-dark-custom:hover {
+            background-color: #1b1b1b;
+            color: #fff;
+        }
+
+        .btn-dark-custom:active {
+            transform: scale(0.99);
+        }
+
+    /* ===== BOTÕES EXTERNOS ===== */
+    .btn-outline-dark-custom {
+        border: 2px solid #000;
+        color: #000;
+        background-color: transparent;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 600;
+        transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+    }
+
+        .btn-outline-dark-custom:hover {
+            background-color: #000;
+            color: #fff;
+        }
+
+    /* ===== CARD DO EXTERNAL LOGIN ===== */
+    .external-card {
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.06);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.05);
+        height: 100%;
+    }
+
+    /* ===== MOBILE ===== */
+    @@media (max-width: 576px) {
+        .register-page
+
+    {
+        padding: 18px 12px;
+    }
+
+    .register-card {
+        padding: 22px;
+    }
+
+    }
+</style>
