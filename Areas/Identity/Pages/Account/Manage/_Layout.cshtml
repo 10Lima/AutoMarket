@@ -1,0 +1,179 @@
+﻿@{
+    if (ViewData.TryGetValue("ParentLayout", out var parentLayout) && parentLayout != null)
+    {
+        Layout = parentLayout.ToString();
+    }
+    else
+    {
+        Layout = "/Areas/Identity/Pages/_Layout.cshtml";
+    }
+}
+
+<div class="register-page">
+    <div class="register-card">
+
+        <div class="manage-header">
+            <h1 class="manage-title">Gerir a tua conta</h1>
+            <p class="manage-subtitle">Altera as tuas definições de conta em segurança.</p>
+        </div>
+
+        <hr class="manage-hr" />
+
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="manage-nav-card">
+                    <partial name="_ManageNav" />
+                </div>
+            </div>
+
+            <div class="col-md-9">
+                <div class="manage-content">
+                    @RenderBody()
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}
+
+<style>
+    /* ===== PAGE WRAP (global do Manage) ===== */
+    .register-page {
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        background-color: #f5f5f5;
+        min-height: calc(100vh - 70px);
+        padding: 32px 20px;
+    }
+
+    .register-card {
+        background-color: #fff;
+        border-radius: 14px;
+        padding: 40px;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    /* ===== HEADER ===== */
+    .manage-header {
+        margin-bottom: 10px;
+    }
+
+    .manage-title {
+        margin: 0;
+        font-weight: 750;
+        color: #111;
+        letter-spacing: -0.3px;
+        font-size: clamp(28px, 3vw, 40px);
+    }
+
+    .manage-subtitle {
+        margin: 8px 0 0 0;
+        color: #555;
+        line-height: 1.6;
+    }
+
+    .manage-hr {
+        margin: 18px 0 22px 0;
+        border-top: 1px solid rgba(0,0,0,0.10);
+        opacity: 1;
+    }
+
+    /* ===== NAV CARD ===== */
+    .manage-nav-card {
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.06);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+        height: 100%;
+    }
+
+    /* ===== CONTENT AREA ===== */
+    .manage-content {
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.06);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+        height: 100%;
+    }
+
+    /* ===== OVERRIDES DO _ManageNav ===== */
+    .manage-nav-card .nav-pills .nav-link {
+        border-radius: 12px;
+        padding: 10px 12px;
+        color: #111;
+        font-weight: 650;
+        border: 1px solid transparent;
+    }
+
+        .manage-nav-card .nav-pills .nav-link:hover {
+            background: rgba(0,0,0,0.05);
+            border-color: rgba(0,0,0,0.08);
+            color: #111;
+        }
+
+        .manage-nav-card .nav-pills .nav-link.active,
+        .manage-nav-card .nav-pills .show > .nav-link {
+            background: #000 !important;
+            color: #fff !important;
+            border-color: #000 !important;
+        }
+
+    /* ===== Inputs ===== */
+    .form-control,
+    .form-select {
+        border-radius: 10px;
+        border: 1px solid #d0d0d0;
+    }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #000;
+            box-shadow: 0 0 0 0.15rem rgba(0,0,0,0.12);
+        }
+
+    /* ===== Botões: deixa os .btn-primary do Identity a preto (sem mudar as páginas) ===== */
+    .btn-primary {
+        background-color: #000 !important;
+        border-color: #000 !important;
+        color: #fff !important;
+        border-radius: 12px;
+        font-weight: 650;
+        padding: 12px 14px;
+    }
+
+        .btn-primary:hover {
+            background-color: #1b1b1b !important;
+            border-color: #1b1b1b !important;
+        }
+
+    /* ===== MOBILE ===== */
+    @@media (max-width: 576px) {
+        .register-page
+
+    {
+        padding: 18px 12px;
+    }
+
+    .register-card {
+        padding: 22px;
+    }
+
+    .manage-content {
+        padding: 16px;
+    }
+
+    .manage-nav-card {
+        padding: 12px;
+    }
+
+    }
+</style>

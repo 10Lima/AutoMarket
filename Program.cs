@@ -1,4 +1,4 @@
-﻿using AutoMarket.Data;
+using AutoMarket.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
