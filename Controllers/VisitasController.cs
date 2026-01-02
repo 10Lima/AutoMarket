@@ -8,6 +8,7 @@ using Microsoft.Data.SqlClient;
 using AutoMarket.Data;
 using AutoMarket.Services;
 using AutoMarket.Models.Market;
+using System.Text.Json;
 
 namespace AutoMarket.Controllers;
 
@@ -68,6 +69,72 @@ UPDATE market.Visita
 SET estado = N'realizada'
 WHERE estado = N'agendada'
   AND data_visita <= SYSUTCDATETIME();");
+    }
+
+    // ============================================================
+    // HELPERS PARA NOTIFICAÇÕES
+    // ============================================================
+    private static string NormalizarCanalEmailSms(string? canalPreferido)
+    {
+        var c = (canalPreferido ?? "").Trim().ToLowerInvariant();
+        return (c == "sms") ? "sms" : "email";
+    }
+
+    private async Task CriarNotificacaoParaUtilizadorAsync(
+        int idDestinatario,
+        string tipo,
+        string titulo,
+        string texto,
+        object payload)
+    {
+        var prefs = await _marketDb.Utilizador
+            .AsNoTracking()
+            .Where(u => u.id_utilizador == idDestinatario)
+            .Select(u => new { u.notificar_novidades, u.canal_notificacao_preferido })
+            .FirstOrDefaultAsync();
+
+        if (prefs is null) return;
+
+        var notif = new Notificacao
+        {
+            tipo = tipo,
+            titulo = titulo,
+            texto = texto,
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        var canal = NormalizarCanalEmailSms(prefs.canal_notificacao_preferido);
+        
+        // ✅ só fica pendente quando é para EMAIL e o user aceitou receber novidades
+        var estadoEnvio = (prefs.notificar_novidades && canal == "email")
+            ? "pendente"
+            : "enviada";
+
+        var recebida = new Notificacao_Recebida
+        {
+            id_utilizador = idDestinatario,
+            id_notificacaoNavigation = notif,
+            data_envio = DateTime.UtcNow,
+            canal = canal,
+            estado = estadoEnvio
+        };
+
+        _marketDb.Notificacao_Recebida.Add(recebida);
+    }
+
+    private async Task CriarNotificacaoParaAmbosAsync(
+        int idComprador,
+        int idVendedor,
+        string tipo,
+        string tituloComprador,
+        string textoComprador,
+        string tituloVendedor,
+        string textoVendedor,
+        object payload)
+    {
+        await CriarNotificacaoParaUtilizadorAsync(idComprador, tipo, tituloComprador, textoComprador, payload);
+        if (idVendedor != idComprador)
+            await CriarNotificacaoParaUtilizadorAsync(idVendedor, tipo, tituloVendedor, textoVendedor, payload);
     }
 
     // ============================================================
@@ -199,6 +266,25 @@ WHERE estado = N'agendada'
         try
         {
             await _marketDb.SaveChangesAsync();
+
+            // ✅ NOTIFICAÇÃO 1: Vendedor recebe "Pedido de visita"
+            var payload = new
+            {
+                v = 1,
+                id_visita = visita.id_visita,
+                id_anuncio = visita.id_anuncio,
+                data_visita = visita.data_visita
+            };
+
+            await CriarNotificacaoParaUtilizadorAsync(
+                anuncio.id_vendedor,
+                "visita_pendente",
+                "Novo pedido de visita",
+                "Um comprador pediu uma visita ao teu anúncio.",
+                payload
+            );
+
+            await _marketDb.SaveChangesAsync();
         }
         catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx && (sqlEx.Number == 2601 || sqlEx.Number == 2627))
         {
@@ -304,6 +390,25 @@ WHERE estado = N'agendada'
             try
             {
                 await _marketDb.SaveChangesAsync();
+
+                // ✅ NOTIFICAÇÃO 2: Comprador recebe "Visita agendada"
+                var payload = new
+                {
+                    v = 1,
+                    id_visita = visita.id_visita,
+                    id_anuncio = visita.id_anuncio,
+                    data_visita = visita.data_visita
+                };
+
+                await CriarNotificacaoParaUtilizadorAsync(
+                    visita.id_utilizador,
+                    "visita_agendada",
+                    "Visita agendada",
+                    "O vendedor aceitou o teu pedido e agendou a visita.",
+                    payload
+                );
+
+                await _marketDb.SaveChangesAsync();
             }
             catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx && (sqlEx.Number == 2601 || sqlEx.Number == 2627))
             {
@@ -343,6 +448,25 @@ WHERE estado = N'agendada'
         visita.estado = "rejeitada";
         await _marketDb.SaveChangesAsync();
 
+        // ✅ NOTIFICAÇÃO 2: Comprador recebe "Visita rejeitada"
+        var payload = new
+        {
+            v = 1,
+            id_visita = visita.id_visita,
+            id_anuncio = visita.id_anuncio,
+            data_visita = visita.data_visita
+        };
+
+        await CriarNotificacaoParaUtilizadorAsync(
+            visita.id_utilizador,
+            "visita_rejeitada",
+            "Visita rejeitada",
+            "O vendedor rejeitou o teu pedido de visita.",
+            payload
+        );
+
+        await _marketDb.SaveChangesAsync();
+
         if (IsAjaxRequest(Request))
             return await ListaVisitas(estado, ordem);
 
@@ -375,6 +499,28 @@ WHERE estado = N'agendada'
         if (visita.estado != "agendada") return BadRequest();
 
         visita.estado = "cancelada";
+        await _marketDb.SaveChangesAsync();
+
+        // ✅ NOTIFICAÇÃO 3: Ambos recebem "Visita cancelada"
+        var payload = new
+        {
+            v = 1,
+            id_visita = visita.id_visita,
+            id_anuncio = visita.id_anuncio,
+            data_visita = visita.data_visita
+        };
+
+        await CriarNotificacaoParaAmbosAsync(
+            idComprador: visita.id_utilizador,
+            idVendedor: visita.id_anuncioNavigation.id_vendedor,
+            tipo: "visita_cancelada",
+            tituloComprador: "Visita cancelada",
+            textoComprador: "A visita foi cancelada pelo vendedor.",
+            tituloVendedor: "Visita cancelada",
+            textoVendedor: "Cancelaste a visita.",
+            payload: payload
+        );
+
         await _marketDb.SaveChangesAsync();
 
         if (IsAjaxRequest(Request))
@@ -437,7 +583,10 @@ WHERE estado = N'agendada'
 
         await AtualizarRealizadasAsync(idComprador: idUtil.Value);
 
-        var visita = await _marketDb.Visita.FirstOrDefaultAsync(v => v.id_visita == id);
+        var visita = await _marketDb.Visita
+            .Include(v => v.id_anuncioNavigation)
+            .FirstOrDefaultAsync(v => v.id_visita == id);
+
         if (visita == null) return NotFound();
 
         if (visita.id_utilizador != idUtil.Value) return Forbid();
@@ -446,6 +595,28 @@ WHERE estado = N'agendada'
         if (visita.estado != "cancelada")
         {
             visita.estado = "cancelada";
+            await _marketDb.SaveChangesAsync();
+
+            // ✅ NOTIFICAÇÃO 3: Ambos recebem "Visita cancelada"
+            var payload = new
+            {
+                v = 1,
+                id_visita = visita.id_visita,
+                id_anuncio = visita.id_anuncio,
+                data_visita = visita.data_visita
+            };
+
+            await CriarNotificacaoParaAmbosAsync(
+                idComprador: visita.id_utilizador,
+                idVendedor: visita.id_anuncioNavigation.id_vendedor,
+                tipo: "visita_cancelada",
+                tituloComprador: "Visita cancelada",
+                textoComprador: "Cancelaste a visita.",
+                tituloVendedor: "Visita cancelada",
+                textoVendedor: "A visita foi cancelada pelo comprador.",
+                payload: payload
+            );
+
             await _marketDb.SaveChangesAsync();
         }
 

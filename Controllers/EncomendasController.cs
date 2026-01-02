@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -122,11 +123,11 @@ public class EncomendasController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Checkout(
-    long id,
-    string TitularCartao,
-    string NumeroCartao,
-    string Validade,
-    string Cvv)
+        long id,
+        string TitularCartao,
+        string NumeroCartao,
+        string Validade,
+        string Cvv)
     {
         var idUtil = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtil == null) return Unauthorized();
@@ -150,7 +151,7 @@ public class EncomendasController : Controller
         // ✅ Normalizar titular: remove acentos + uppercase
         TitularCartao = (TitularCartao ?? "").Trim();
         TitularCartao = TitularCartao.Normalize(System.Text.NormalizationForm.FormD);
-        TitularCartao = new string(TitularCartao.Where(c => 
+        TitularCartao = new string(TitularCartao.Where(c =>
             System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());
         TitularCartao = TitularCartao.ToUpperInvariant();
 
@@ -249,6 +250,36 @@ public class EncomendasController : Controller
             foreach (var e in outras)
                 e.estado = "cancelado";
 
+            // ✅ NOTIFICAÇÕES (transição pendente → pago)
+            var payload = new
+            {
+                v = 1,
+                id_encomenda = encomenda.id_encomenda,
+                id_anuncio = anuncio.id_anuncio,
+                ref_pagamento = encomenda.ref_pagamento,
+                data_pagamento = DateTime.UtcNow
+            };
+
+            var tituloAnuncio = string.IsNullOrWhiteSpace(anuncio.titulo) ? "o anúncio" : $"\"{anuncio.titulo}\"";
+
+            // Comprador: compra confirmada
+            await CriarNotificacaoAsync(
+                idDestinatario: encomenda.id_utilizador,
+                tipo: "compra_confirmada",
+                titulo: "Compra confirmada",
+                texto: $"O pagamento foi confirmado para {tituloAnuncio}.",
+                payload: payload
+            );
+
+            // Vendedor: venda confirmada
+            await CriarNotificacaoAsync(
+                idDestinatario: anuncio.id_vendedor,
+                tipo: "venda_confirmada",
+                titulo: "Anúncio vendido (pago)",
+                texto: $"Recebeste uma compra paga para {tituloAnuncio}.",
+                payload: payload
+            );
+
             await _marketDb.SaveChangesAsync();
             await tx.CommitAsync();
 
@@ -320,4 +351,58 @@ public class EncomendasController : Controller
         return RedirectToAction(nameof(Carrinho));
     }
 
+    // ============================================================
+    // NOTIFICAÇÕES — Compra/Venda confirmada
+    // - Inbox sempre (Notificacao_Recebida)
+    // - Email só se Utilizador.notificar_novidades = true (estado='pendente')
+    // - canal só 'email' ou 'sms'
+    // ============================================================
+
+    private static string NormalizarCanalEmailSms(string? canalPreferido)
+    {
+        var c = (canalPreferido ?? "").Trim().ToLowerInvariant();
+        return (c == "sms") ? "sms" : "email";
+    }
+
+    private async Task CriarNotificacaoAsync(
+        int idDestinatario,
+        string tipo,
+        string titulo,
+        string texto,
+        object payload)
+    {
+        var prefs = await _marketDb.Utilizador
+            .AsNoTracking()
+            .Where(u => u.id_utilizador == idDestinatario)
+            .Select(u => new { u.notificar_novidades, u.canal_notificacao_preferido })
+            .FirstOrDefaultAsync();
+
+        if (prefs is null) return;
+
+        var notif = new Notificacao
+        {
+            tipo = tipo,
+            titulo = titulo,
+            texto = texto,
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        var canal = NormalizarCanalEmailSms(prefs.canal_notificacao_preferido);
+        
+        // ✅ só fica pendente quando é para EMAIL e o user aceitou receber novidades
+        var estadoEnvio = (prefs.notificar_novidades && canal == "email")
+            ? "pendente"
+            : "enviada";
+
+        var recebida = new Notificacao_Recebida
+        {
+            id_utilizador = idDestinatario,
+            id_notificacaoNavigation = notif,
+            data_envio = DateTime.UtcNow,
+            canal = canal,
+            estado = estadoEnvio
+        };
+
+        _marketDb.Notificacao_Recebida.Add(recebida);
+    }
 }

@@ -1,6 +1,7 @@
 ﻿using AutoMarket.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using AutoMarket.Services.Email;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,17 @@ builder.Services.AddControllersWithViews();
 
 // Serviço para saber o id do current user
 builder.Services.AddScoped<AutoMarket.Services.CurrentUserService>();
+
+// ✅ Configuração do Gmail SMTP
+builder.Services.Configure<GmailSmtpOptions>(
+    builder.Configuration.GetSection("GmailSmtp")
+);
+
+// ✅ Serviço de envio de email
+builder.Services.AddSingleton<IEmailSender, GmailEmailSender>();
+
+builder.Services.AddHostedService<NotificacoesEmailDispatcherHostedService>();
+
 
 var app = builder.Build();
 
