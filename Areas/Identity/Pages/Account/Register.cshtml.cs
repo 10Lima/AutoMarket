@@ -1,16 +1,17 @@
 ﻿#nullable enable
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using AutoMarket.Data;
 using AutoMarket.Models.Market;
-using AutoMarket.Services;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -23,7 +24,7 @@ namespace AutoMarket.Areas.Identity.Pages.Account
         private readonly IUserStore<IdentityUser> _userStore;
         private readonly IUserEmailStore<IdentityUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
-        private readonly IEmailSender _emailSender;
+        private readonly IEmailSender _emailSender; // ✅ Identity UI sender
         private readonly MarketplaceDbContext _marketDb;
 
         public RegisterModel(
@@ -50,10 +51,8 @@ namespace AutoMarket.Areas.Identity.Pages.Account
 
         public IList<AuthenticationScheme> ExternalLogins { get; set; } = new List<AuthenticationScheme>();
 
-        // quando true, o registo cria Administrador em vez de Comprador
         public bool IsAdminRegistration { get; private set; }
 
-        // mensagem simples para feedback (ex.: "Administrador registado com sucesso.")
         [TempData]
         public string? StatusMessage { get; set; }
 
@@ -123,23 +122,27 @@ namespace AutoMarket.Areas.Identity.Pages.Account
             public string? Contacto2Valor { get; set; }
         }
 
-        public async Task OnGetAsync(string? returnUrl = null, bool admin = false)
+        // ✅ Suporta ?admin=true E ?mode=admin (o teu link atual usa mode)
+        public async Task OnGetAsync(string? returnUrl = null, bool admin = false, string? mode = null)
         {
             ReturnUrl = returnUrl;
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-            IsAdminRegistration = admin;
+
+            var isAdminMode = admin || string.Equals(mode, "admin", StringComparison.OrdinalIgnoreCase);
+            IsAdminRegistration = isAdminMode;
         }
 
-        public async Task<IActionResult> OnPostAsync(string? returnUrl = null, bool admin = false)
+        public async Task<IActionResult> OnPostAsync(string? returnUrl = null, bool admin = false, string? mode = null)
         {
             returnUrl ??= Url.Content("~/");
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
-            IsAdminRegistration = admin;
+            var isAdminMode = admin || string.Equals(mode, "admin", StringComparison.OrdinalIgnoreCase);
+            IsAdminRegistration = isAdminMode;
 
             // Se for registo de admin, confirmar que quem está a submeter é Admin no marketplace
             int? currentAdminIdUtilizador = null;
-            if (admin)
+            if (isAdminMode)
             {
                 if (!User.Identity?.IsAuthenticated ?? true)
                     return Forbid();
@@ -243,8 +246,7 @@ namespace AutoMarket.Areas.Identity.Pages.Account
                 _marketDb.Utilizador.Add(utilizador);
                 await _marketDb.SaveChangesAsync();
 
-                // --- diferença principal ---
-                if (admin)
+                if (isAdminMode)
                 {
                     // Registo de admins: cria Administrador e NÃO cria Comprador
                     _marketDb.Administrador.Add(new Administrador
@@ -262,10 +264,7 @@ namespace AutoMarket.Areas.Identity.Pages.Account
                         motivo = motivoAdmin
                     });
 
-                    // ✅ Notificação ao novo admin (admin_criado)
-                    // Regras:
-                    // - vai sempre para a view (Notificacao_Recebida)
-                    // - só fica "pendente" (para email) se notificar_novidades==true e canal=="email"
+                    // Notificação ao novo admin (admin_criado) — sempre na view; email só se notificar_novidades && canal=email
                     var payload = new
                     {
                         v = 1,
@@ -281,13 +280,12 @@ namespace AutoMarket.Areas.Identity.Pages.Account
                         payload_json = JsonSerializer.Serialize(payload)
                     };
 
-                    // canal já foi validado acima (email/sms)
-                    var estadoEnvio = (utilizador.notificar_novidades && canal == "email") ? "pendente" : "enviada";
+                    var estadoEnvio = Notif_EstadoEnvio(utilizador.notificar_novidades, canal);
 
                     _marketDb.Notificacao_Recebida.Add(new Notificacao_Recebida
                     {
                         id_utilizador = utilizador.id_utilizador,
-                        id_notificacaoNavigation = notif, // EF insere Notificacao + Recebida
+                        id_notificacaoNavigation = notif,
                         data_envio = DateTime.UtcNow,
                         canal = canal,
                         estado = estadoEnvio
@@ -295,13 +293,11 @@ namespace AutoMarket.Areas.Identity.Pages.Account
                 }
                 else
                 {
-                    // Registo normal: cria Comprador
                     _marketDb.Comprador.Add(new Comprador
                     {
                         id_utilizador = utilizador.id_utilizador
                     });
                 }
-
 
                 _marketDb.Morada.Add(new Morada
                 {
@@ -311,7 +307,6 @@ namespace AutoMarket.Areas.Identity.Pages.Account
                     cod_postal = Input.CodigoPostal.Trim()
                 });
 
-                // Contacto 1: sempre telemovel
                 _marketDb.Utilizador_Contacto.Add(new Utilizador_Contacto
                 {
                     id_utilizador = utilizador.id_utilizador,
@@ -319,13 +314,12 @@ namespace AutoMarket.Areas.Identity.Pages.Account
                     valor = c1Digits
                 });
 
-                // Contacto 2: opcional, tipo deduzido (telemovel/telefone)
                 if (!string.IsNullOrWhiteSpace(c2Digits))
                 {
                     _marketDb.Utilizador_Contacto.Add(new Utilizador_Contacto
                     {
                         id_utilizador = utilizador.id_utilizador,
-                        tipo = c2Tipo!,   // garantido acima
+                        tipo = c2Tipo!,
                         valor = c2Digits
                     });
                 }
@@ -337,7 +331,6 @@ namespace AutoMarket.Areas.Identity.Pages.Account
             {
                 await tx.RollbackAsync();
                 _logger.LogError(ex, "Falha ao criar registos no marketplace durante o registo.");
-
                 await _userManager.DeleteAsync(user);
 
                 ModelState.AddModelError(string.Empty, "Não foi possível concluir o registo. Tente novamente.");
@@ -347,30 +340,70 @@ namespace AutoMarket.Areas.Identity.Pages.Account
             {
                 await tx.RollbackAsync();
                 _logger.LogError(ex, "Erro inesperado durante o registo (marketplace).");
-
                 await _userManager.DeleteAsync(user);
 
                 ModelState.AddModelError(string.Empty, "Ocorreu um erro ao concluir o registo. Tente novamente.");
                 return Page();
             }
 
-            _logger.LogInformation(admin
+            // ✅ 3) Email de confirmação (se RequireConfirmedAccount=true)
+            try
+            {
+                var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+                var callbackUrl = Url.Page(
+                    "/Account/ConfirmEmail",
+                    pageHandler: null,
+                    values: new { area = "Identity", userId = user.Id, code, returnUrl },
+                    protocol: Request.Scheme);
+
+                // Mensagem curta (pode ser HTML; o teu sender pode mandar como texto simples)
+                var subject = "Confirmar email — AutoMarket";
+                var message =
+                    $"Confirma a tua conta AutoMarket abrindo este link:\n{callbackUrl}\n\n" +
+                    "Se não foste tu, ignora este email.";
+
+                await _emailSender.SendEmailAsync(Input.Email.Trim(), subject, message);
+            }
+            catch (Exception ex)
+            {
+                // Não bloqueia o registo; mas fica logado para veres o erro.
+                _logger.LogWarning(ex, "Falha a enviar email de confirmação (IdentityUserId={Id}).", user.Id);
+            }
+
+            _logger.LogInformation(isAdminMode
                 ? "Administrador registado com sucesso (Identity + marketplace)."
                 : "Utilizador registado com sucesso (Identity + marketplace).");
 
+            // ✅ Se RequireConfirmedAccount=true, não assina sessão automaticamente.
+            if (_userManager.Options.SignIn.RequireConfirmedAccount)
+            {
+                // Se for admin a criar admin, volta ao register admin (para criar mais), mas avisa que foi enviado email
+                if (isAdminMode)
+                {
+                    StatusMessage = "Administrador registado. Foi enviado um email para confirmar a conta.";
+                    return RedirectToPage("./Register", new { mode = "admin" });
+                }
+
+                return RedirectToPage("RegisterConfirmation", new { email = Input.Email.Trim(), returnUrl });
+            }
+
             // MUITO IMPORTANTE:
             // Se for um admin a criar outra conta admin, não queremos trocar a sessão atual.
-            if (admin)
+            if (isAdminMode)
             {
                 StatusMessage = "Administrador registado com sucesso.";
-                return RedirectToPage("./Register", new { admin = true });
+                return RedirectToPage("./Register", new { mode = "admin" });
             }
 
             await _signInManager.SignInAsync(user, isPersistent: false);
             return LocalRedirect(returnUrl);
         }
 
-        // Aceita +351, espaços, hífens. Devolve 9 dígitos (ou vazio).
+        private static string Notif_EstadoEnvio(bool notificarNovidades, string canal)
+            => (notificarNovidades && canal == "email") ? "pendente" : "enviada";
+
         private static string NormalizePtPhone(string? input)
         {
             if (string.IsNullOrWhiteSpace(input))
