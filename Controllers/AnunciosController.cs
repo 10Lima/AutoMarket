@@ -10,6 +10,8 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MailKit.Net.Smtp;
+using MimeKit;
 
 
 namespace AutoMarket.Controllers;
@@ -258,6 +260,9 @@ public class AnunciosController : Controller
                     data_publicacao = anuncio.data_publicacao
                 });
                 await _marketDb.SaveChangesAsync();
+
+                // ✅ Notificação: anúncio ficou ativo (marca favoritada)
+                await CriarNotificacaoMarcaFavoritaAsync(anuncio.id_anuncio);
             }
 
             // ✅ Commit da transação (imagens já guardadas)
@@ -561,19 +566,70 @@ public class AnunciosController : Controller
             .FirstOrDefaultAsync(a => a.id_anuncio == id && a.id_vendedor == idUtilizador.Value);
         if (anuncio == null) return NotFound();
 
-        if (anuncio.estado == "ativo")
+        if (anuncio.estado == "ativo" || anuncio.estado == "reservado")
         {
             var agora = DateTime.UtcNow;
 
-            // ✅ Cancelar reserva ativa (se existir)
-            var reservaAtiva = await _marketDb.Reserva
-                .FirstOrDefaultAsync(r => r.id_anuncio == id && r.estado == "ativa");
+            // =========================================================
+            // 0) ENCOMENDAS: permitir pausar só se TODAS forem "pendente"
+            // =========================================================
+            var encomendas = await _marketDb.Encomenda
+                .Where(e => e.id_anuncio == id)
+                .ToListAsync();
 
-            if (reservaAtiva != null)
+            if (encomendas.Any(e => !string.Equals(e.estado, "pendente", StringComparison.OrdinalIgnoreCase)))
             {
-                reservaAtiva.estado = "cancelada";
+                TempData["Erro"] = "Não é possível pausar este anúncio porque existem encomendas que não estão no estado 'pendente'.";
+                return RedirectToAction(nameof(Meus), new { estado = anuncio.estado });
             }
 
+            var compradoresEncomendaPendente = encomendas
+                .Where(e => string.Equals(e.estado, "pendente", StringComparison.OrdinalIgnoreCase))
+                .Select(e => e.id_utilizador)
+                .Distinct()
+                .ToList();
+
+            // ===== 1) Capturar afetados (reserva + visitas) ANTES de mexer em estados =====
+            var reservaAtivaInfo = await _marketDb.Reserva
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.id_anuncio == id && r.estado == "ativa");
+
+            var reservadores = (reservaAtivaInfo != null)
+                ? new List<int> { reservaAtivaInfo.id_utilizador }
+                : new List<int>();
+
+            var visitantes = await _marketDb.Visita
+                .AsNoTracking()
+                .Where(v => v.id_anuncio == id && (v.estado == "pendente" || v.estado == "agendada"))
+                .Select(v => v.id_utilizador)
+                .Distinct()
+                .ToListAsync();
+
+            // ✅ Não removemos interseção: se tiver reserva+visita recebe 2 notif.
+
+            // ===== 2) Cancelar reserva ativa =====
+            if (reservaAtivaInfo != null)
+            {
+                var reservaTracked = await _marketDb.Reserva
+                    .FirstOrDefaultAsync(r => r.id_reserva == reservaAtivaInfo.id_reserva);
+
+                if (reservaTracked != null)
+                    reservaTracked.estado = "cancelada";
+            }
+
+            // ===== 3) Cancelar visitas pendente/agendada =====
+            var visitas = await _marketDb.Visita
+                .Where(v => v.id_anuncio == id && (v.estado == "pendente" || v.estado == "agendada"))
+                .ToListAsync();
+
+            foreach (var v in visitas)
+                v.estado = "cancelada";
+
+            // ===== 4) Cancelar encomendas pendentes (set estado = "cancelado") =====
+            foreach (var e in encomendas)
+                e.estado = "cancelado"; // CHECK: (pendente|pago|cancelado)
+
+            // ===== 5) Pausar anúncio =====
             anuncio.estado = "inativo";
             anuncio.data_atualizacao = agora;
 
@@ -585,11 +641,62 @@ public class AnunciosController : Controller
                 data_acao = agora
             });
 
+            // ===== 6) Notificações (3 tipos de mensagem) =====
+            var acao = "pausado";
+            var tituloBase = string.IsNullOrWhiteSpace(anuncio.titulo) ? "Anúncio" : anuncio.titulo.Trim();
+
+            // 6.1) Encomenda pendente cancelada
+            if (compradoresEncomendaPendente.Count > 0)
+            {
+                var payloadEnc = new { v = 1, origem = "encomenda", acao = "pausar", id_anuncio = anuncio.id_anuncio };
+
+                await CriarNotificacaoParaVariosAsync(
+                    idsDestinatarios: compradoresEncomendaPendente,
+                    idVendedor: anuncio.id_vendedor,
+                    tipo: "encomenda_pendente_cancelada",
+                    titulo: $"Anúncio {acao} — {tituloBase} (Encomenda pendente cancelada)",
+                    texto: $"A sua encomenda pendente foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    payload: payloadEnc
+                );
+            }
+
+            // 6.2) Reserva cancelada
+            if (reservadores.Count > 0)
+            {
+                var payloadReserva = new { v = 1, origem = "pausar", id_anuncio = anuncio.id_anuncio, motivo = "reserva" };
+
+                await CriarNotificacaoParaVariosAsync(
+                    idsDestinatarios: reservadores,
+                    idVendedor: anuncio.id_vendedor,
+                    tipo: "anuncio_pausado",
+                    titulo: $"Anúncio {acao} — {tituloBase} (Reserva cancelada)",
+                    texto: $"A sua reserva foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    payload: payloadReserva
+                );
+            }
+
+            // 6.3) Visita cancelada
+            if (visitantes.Count > 0)
+            {
+                var payloadVisita = new { v = 1, origem = "pausar", id_anuncio = anuncio.id_anuncio, motivo = "visita" };
+
+                await CriarNotificacaoParaVariosAsync(
+                    idsDestinatarios: visitantes,
+                    idVendedor: anuncio.id_vendedor,
+                    tipo: "anuncio_pausado",
+                    titulo: $"Anúncio {acao} — {tituloBase} (Visita cancelada)",
+                    texto: $"A sua visita foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    payload: payloadVisita
+                );
+            }
+
             await _marketDb.SaveChangesAsync();
         }
 
         return RedirectToAction(nameof(Meus), new { estado = "inativo" });
     }
+
+
 
     // ========================================
     // POST: Ativar (inativo/rascunho → ativo)
@@ -626,6 +733,8 @@ public class AnunciosController : Controller
             });
 
             await _marketDb.SaveChangesAsync();
+
+            await CriarNotificacaoMarcaFavoritaAsync(anuncio.id_anuncio);
         }
 
         return RedirectToAction(nameof(Meus), new { estado = "ativo" });
@@ -678,18 +787,45 @@ public class AnunciosController : Controller
 
         if (anuncio == null) return NotFound();
 
-        // ✅ VALIDAÇÃO: Se houver encomendas, o FK NO_ACTION impede o delete
-        var hasEncomendas = await _marketDb.Encomenda
-            .AnyAsync(e => e.id_anuncio == id);
+        var idAnuncio = anuncio.id_anuncio;
+        var veiculo = anuncio.id_veiculoNavigation;
 
-        if (hasEncomendas)
+        // =========================================================
+        // 0) ENCOMENDAS: permitir remover só se TODAS forem "pendente"
+        //    (e como é delete físico, temos de APAGAR as pendentes)
+        // =========================================================
+        var encomendas = await _marketDb.Encomenda
+            .Where(e => e.id_anuncio == idAnuncio)
+            .ToListAsync();
+
+        if (encomendas.Any(e => !string.Equals(e.estado, "pendente", StringComparison.OrdinalIgnoreCase)))
         {
-            TempData["Erro"] = "Não é possível remover o anúncio porque já existem encomendas associadas.";
+            TempData["Erro"] = "Não é possível remover este anúncio porque existem encomendas que não estão no estado 'pendente'.";
             return RedirectToAction(nameof(Detalhes), new { id });
         }
 
-        var idAnuncio = anuncio.id_anuncio;
-        var veiculo = anuncio.id_veiculoNavigation;
+        var compradoresEncomendaPendente = encomendas
+            .Where(e => string.Equals(e.estado, "pendente", StringComparison.OrdinalIgnoreCase))
+            .Select(e => e.id_utilizador)
+            .Distinct()
+            .ToList();
+
+        // ===== 1) Capturar afetados (reserva + visitas) ANTES do delete/cascade =====
+        var reservadores = await _marketDb.Reserva
+            .AsNoTracking()
+            .Where(r => r.id_anuncio == idAnuncio && r.estado == "ativa")
+            .Select(r => r.id_utilizador)
+            .Distinct()
+            .ToListAsync();
+
+        var visitantes = await _marketDb.Visita
+            .AsNoTracking()
+            .Where(v => v.id_anuncio == idAnuncio && (v.estado == "pendente" || v.estado == "agendada"))
+            .Select(v => v.id_utilizador)
+            .Distinct()
+            .ToListAsync();
+
+        // ✅ Não removemos interseção: se tiver reserva+visita recebe 2 notif.
 
         await using var tx = await _marketDb.Database.BeginTransactionAsync();
 
@@ -704,7 +840,63 @@ public class AnunciosController : Controller
             });
             await _marketDb.SaveChangesAsync();
 
-            // ✅ CASCADE apaga: Reserva, Visita, Anuncio_Imagem, Publica_Atualiza
+            // ===== 2) Notificações ANTES do delete =====
+            var acao = "removido";
+            var tituloBase = string.IsNullOrWhiteSpace(anuncio.titulo) ? "Anúncio" : anuncio.titulo.Trim();
+
+            // 2.1) Encomenda pendente cancelada
+            if (compradoresEncomendaPendente.Count > 0)
+            {
+                var payloadEnc = new { v = 1, origem = "encomenda", acao = "remover", id_anuncio = idAnuncio };
+
+                await CriarNotificacaoParaVariosAsync(
+                    idsDestinatarios: compradoresEncomendaPendente,
+                    idVendedor: anuncio.id_vendedor,
+                    tipo: "encomenda_pendente_cancelada",
+                    titulo: $"Anúncio {acao} — {tituloBase} (Encomenda pendente cancelada)",
+                    texto: $"A sua encomenda pendente foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    payload: payloadEnc
+                );
+            }
+
+            // 2.2) Reserva cancelada
+            if (reservadores.Count > 0)
+            {
+                var payloadReserva = new { v = 1, origem = "remover", id_anuncio = idAnuncio, motivo = "reserva" };
+
+                await CriarNotificacaoParaVariosAsync(
+                    idsDestinatarios: reservadores,
+                    idVendedor: anuncio.id_vendedor,
+                    tipo: "anuncio_removido",
+                    titulo: $"Anúncio {acao} — {tituloBase} (Reserva cancelada)",
+                    texto: $"A sua reserva foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    payload: payloadReserva
+                );
+            }
+
+            // 2.3) Visita cancelada
+            if (visitantes.Count > 0)
+            {
+                var payloadVisita = new { v = 1, origem = "remover", id_anuncio = idAnuncio, motivo = "visita" };
+
+                await CriarNotificacaoParaVariosAsync(
+                    idsDestinatarios: visitantes,
+                    idVendedor: anuncio.id_vendedor,
+                    tipo: "anuncio_removido",
+                    titulo: $"Anúncio {acao} — {tituloBase} (Visita cancelada)",
+                    texto: $"A sua visita foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    payload: payloadVisita
+                );
+            }
+
+            // ===== 3) APAGAR encomendas pendentes (senão FK NO_ACTION impede delete do anúncio) =====
+            if (encomendas.Count > 0)
+            {
+                _marketDb.Encomenda.RemoveRange(encomendas);
+                await _marketDb.SaveChangesAsync();
+            }
+
+            // ===== 4) delete físico do anúncio (CASCADE trata Reserva/Visita/Imagens/etc.) =====
             _marketDb.Anuncio.Remove(anuncio);
             await _marketDb.SaveChangesAsync();
 
@@ -716,14 +908,11 @@ public class AnunciosController : Controller
 
             await tx.CommitAsync();
 
+            // apagar pasta de imagens (fora da transação)
             var pastaImagens = Path.Combine(_env.WebRootPath, "uploads", "anuncios", idAnuncio.ToString());
-
             if (Directory.Exists(pastaImagens))
             {
-                try
-                {
-                    Directory.Delete(pastaImagens, recursive: true);
-                }
+                try { Directory.Delete(pastaImagens, recursive: true); }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[AVISO] Erro ao apagar pasta {pastaImagens}: {ex.Message}");
@@ -740,6 +929,9 @@ public class AnunciosController : Controller
             return RedirectToAction(nameof(Meus), new { estado = "ativo" });
         }
     }
+
+
+
 
     // ========================================
     // GET: /Anuncios/Editar/5
@@ -927,6 +1119,9 @@ public class AnunciosController : Controller
 
             if (anuncioDb == null) return NotFound();
 
+            // ✅ Guardar estado anterior
+            var estadoAntes = anuncioDb.estado;
+
             // ✅ Atualizar veículo (aceita nulls)
             anuncioDb.id_veiculoNavigation.id_sub_modelo = id_sub_modelo;
             anuncioDb.id_veiculoNavigation.ano = ano;
@@ -1032,6 +1227,12 @@ public class AnunciosController : Controller
                 }
 
                 await _marketDb.SaveChangesAsync();
+            }
+
+            // ✅ Notificação só se realmente "tornou-se ativo"
+            if (isPublish && !string.Equals(estadoAntes, "ativo", StringComparison.OrdinalIgnoreCase))
+            {
+                await CriarNotificacaoMarcaFavoritaAsync(anuncioDb.id_anuncio);
             }
 
             await tx.CommitAsync();
@@ -1643,6 +1844,9 @@ public class AnunciosController : Controller
         anuncio.estado = "reservado";
         anuncio.data_atualizacao = agora;
 
+        // ✅ Notificação para o VENDEDOR: anúncio foi reservado
+        await AdicionarNotif_AnuncioReservado_VendedorAsync(anuncio, idUtil.Value, expiracao);
+
         await _marketDb.SaveChangesAsync();
 
         TempData["Msg"] = "Reserva efetuada com sucesso.";
@@ -1736,6 +1940,9 @@ public class AnunciosController : Controller
 
         var anuncio = reserva.id_anuncioNavigation;
 
+        // ✅ Notificação para o VENDEDOR: reserva cancelada pelo comprador
+        await AdicionarNotif_ReservaCancelada_VendedorAsync(reserva, anuncio);
+
         _marketDb.Reserva.Remove(reserva);
 
         if (string.Equals(anuncio.estado, "reservado", StringComparison.OrdinalIgnoreCase))
@@ -1746,11 +1953,273 @@ public class AnunciosController : Controller
         }
 
         await _marketDb.SaveChangesAsync();
+
+        // ✅ Notificação: anúncio voltou a ativo (reservado → ativo)
+        await CriarNotificacaoMarcaFavoritaAsync(anuncio.id_anuncio);
+
         await tx.CommitAsync();
 
         TempData["Msg"] = "Reserva cancelada.";
         return RedirectToAction(nameof(MinhasOperacoes));
     }
 
-    
+
+    // ============================================================
+    // NOTIFICAÇÕES — Marca favoritada → anúncio torna-se ativo
+    // Regras:
+    // - Sempre cria Notificacao_Recebida (inbox interno / view)
+    // - Se Utilizador.notificar_novidades = true → estado='pendente' (para envio externo)
+    // - Se false → estado='enviada' (apenas inbox/view)
+    // - canal só 'email' ou 'sms'
+    // ============================================================
+
+    private static string NormalizarCanalEmailSms(string? canalPreferido)
+    {
+        var c = (canalPreferido ?? "").Trim().ToLowerInvariant();
+        return (c == "sms") ? "sms" : "email"; // default email
+    }
+
+    private async Task CriarNotificacaoMarcaFavoritaAsync(int idAnuncio)
+    {
+        // Buscar marca do anúncio + vendedor (para não se notificar a si próprio)
+        var info = await _marketDb.Anuncio
+            .AsNoTracking()
+            .Where(a => a.id_anuncio == idAnuncio)
+            .Select(a => new
+            {
+                a.id_anuncio,
+                a.id_vendedor,
+                anuncioTitulo = a.titulo,
+                idMarca = a.id_veiculoNavigation.id_sub_modeloNavigation.id_modeloNavigation.id_marca,
+                nomeMarca = a.id_veiculoNavigation.id_sub_modeloNavigation.id_modeloNavigation.id_marcaNavigation.nome
+            })
+            .FirstOrDefaultAsync();
+
+        if (info == null) return;
+
+        // Destinatários: quem favoritou a marca
+        var destinatarios = await _marketDb.Comprador_Marca
+            .AsNoTracking()
+            .Where(cm => cm.id_marca == info.idMarca)
+            .Select(cm => cm.id_utilizador)
+            .Distinct()
+            .Join(
+                _marketDb.Utilizador.AsNoTracking(),
+                id => id,
+                u => u.id_utilizador,
+                (id, u) => new { u.id_utilizador, u.notificar_novidades, u.canal_notificacao_preferido }
+            )
+            .Where(x => x.id_utilizador != info.id_vendedor) // não notificar o vendedor
+            .ToListAsync();
+
+        if (destinatarios.Count == 0) return;
+
+        // Conteúdo da notificação (1 registo)
+        var payload = new
+        {
+            v = 1,
+            origem = "marca_favorita",
+            id_anuncio = info.id_anuncio,
+            id_marca = info.idMarca
+        };
+
+        var notif = new Notificacao
+        {
+            tipo = "marca_anuncio_ativo",
+            titulo = $"Novo anúncio ativo — {info.nomeMarca}",
+            texto = string.IsNullOrWhiteSpace(info.anuncioTitulo)
+                ? "Foi publicado/ativado um anúncio de uma marca que favoritou."
+                : $"Anúncio: {info.anuncioTitulo}",
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        _marketDb.Notificacao.Add(notif);
+        await _marketDb.SaveChangesAsync(); // gera id_notificacao
+
+        // Inbox interno (sempre) + estado depende do notificar_novidades
+        var rows = destinatarios.Select(x => new Notificacao_Recebida
+        {
+            id_utilizador = x.id_utilizador,
+            id_notificacao = notif.id_notificacao,
+            canal = NormalizarCanalEmailSms(x.canal_notificacao_preferido),
+            estado = x.notificar_novidades ? "pendente" : "enviada",
+            data_envio = DateTime.UtcNow
+        }).ToList();
+
+        _marketDb.Notificacao_Recebida.AddRange(rows);
+        await _marketDb.SaveChangesAsync();
+    }
+
+
+    // ============================================================
+    // NOTIFICAÇÕES — Reservas (Vendedor)
+    // - Inbox sempre (Notificacao_Recebida)
+    // - Email só se Utilizador.notificar_novidades = true (estado = 'pendente')
+    // ============================================================
+    private async Task AdicionarNotif_AnuncioReservado_VendedorAsync(Anuncio anuncio, int idComprador, DateTime dataExpiracaoUtc)
+    {
+        // Preferências do vendedor (na tabela market.Utilizador)
+        var vendedorPrefs = await _marketDb.Utilizador
+            .FirstOrDefaultAsync(u => u.id_utilizador == anuncio.id_vendedor);
+
+        if (vendedorPrefs is null) return;
+
+        var payload = new
+        {
+            v = 1,
+            origem = "reserva",
+            id_anuncio = anuncio.id_anuncio,
+            id_comprador = idComprador,
+            data_expiracao = dataExpiracaoUtc
+        };
+
+        var notif = new Notificacao
+        {
+            tipo = "anuncio_reservado_vendedor",
+            titulo = "O teu anúncio foi reservado",
+            texto = string.IsNullOrWhiteSpace(anuncio.titulo)
+                ? "Um comprador reservou o teu anúncio."
+                : $"Um comprador reservou o teu anúncio: {anuncio.titulo}",
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        var recebida = new Notificacao_Recebida
+        {
+            id_utilizador = anuncio.id_vendedor,
+            id_notificacaoNavigation = notif,         // EF insere Notificacao e depois Notificacao_Recebida
+            data_envio = DateTime.UtcNow,
+            canal = NormalizarCanalEmailSms(vendedorPrefs.canal_notificacao_preferido),
+            estado = vendedorPrefs.notificar_novidades ? "pendente" : "enviada"
+        };
+
+        _marketDb.Notificacao_Recebida.Add(recebida);
+    }
+
+    private async Task AdicionarNotif_ReservaCancelada_VendedorAsync(Reserva reserva, Anuncio anuncio)
+    {
+        var vendedorPrefs = await _marketDb.Utilizador
+            .FirstOrDefaultAsync(u => u.id_utilizador == anuncio.id_vendedor);
+
+        if (vendedorPrefs is null) return;
+
+        var payload = new
+        {
+            v = 1,
+            origem = "reserva",
+            id_reserva = reserva.id_reserva,
+            id_anuncio = reserva.id_anuncio,
+            id_comprador = reserva.id_utilizador
+        };
+
+        var notif = new Notificacao
+        {
+            tipo = "reserva_cancelada_vendedor",
+            titulo = "Reserva cancelada",
+            texto = string.IsNullOrWhiteSpace(anuncio.titulo)
+                ? "O comprador cancelou a reserva do teu anúncio."
+                : $"O comprador cancelou a reserva do teu anúncio: {anuncio.titulo}",
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        var recebida = new Notificacao_Recebida
+        {
+            id_utilizador = anuncio.id_vendedor,
+            id_notificacaoNavigation = notif,
+            data_envio = DateTime.UtcNow,
+            canal = NormalizarCanalEmailSms(vendedorPrefs.canal_notificacao_preferido),
+            estado = vendedorPrefs.notificar_novidades ? "pendente" : "enviada"
+        };
+
+        _marketDb.Notificacao_Recebida.Add(recebida);
+    }
+
+
+    // ============================================================
+    // NOTIFICAÇÕES — Anúncio pausado/removido (afetados por reserva/visita)
+    // ============================================================
+
+    private async Task<List<int>> ObterUtilizadoresAfetadosPorReservaOuVisitaAsync(int idAnuncio)
+    {
+        var reservadores = await _marketDb.Reserva
+            .AsNoTracking()
+            .Where(r => r.id_anuncio == idAnuncio && r.estado == "ativa")
+            .Select(r => r.id_utilizador)
+            .ToListAsync();
+
+        var visitantes = await _marketDb.Visita
+            .AsNoTracking()
+            .Where(v => v.id_anuncio == idAnuncio && (v.estado == "pendente" || v.estado == "agendada"))
+            .Select(v => v.id_utilizador)
+            .ToListAsync();
+
+        return reservadores
+            .Concat(visitantes)
+            .Distinct()
+            .ToList();
+    }
+
+    private async Task CriarNotificacaoParaVariosAsync(
+        IEnumerable<int> idsDestinatarios,
+        int idVendedor,
+        string tipo,
+        string titulo,
+        string texto,
+        object payload)
+    {
+        var destinatarios = idsDestinatarios
+            .Where(id => id != idVendedor) // nunca notificar o vendedor aqui
+            .Distinct()
+            .ToList();
+
+        if (destinatarios.Count == 0) return;
+
+        // 1) Criar 1 Notificacao
+        var notif = new Notificacao
+        {
+            tipo = tipo,
+            titulo = titulo,
+            texto = texto,
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        _marketDb.Notificacao.Add(notif);
+        await _marketDb.SaveChangesAsync(); // gera id_notificacao
+
+        // 2) Obter prefs dos destinatários
+        var prefs = await _marketDb.Utilizador
+            .AsNoTracking()
+            .Where(u => destinatarios.Contains(u.id_utilizador))
+            .Select(u => new
+            {
+                u.id_utilizador,
+                u.notificar_novidades,
+                u.canal_notificacao_preferido
+            })
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
+
+        var rows = prefs.Select(p =>
+        {
+            var canal = NormalizarCanalEmailSms(p.canal_notificacao_preferido);
+
+            // só email é externo (pendente) e só se o user aceitou
+            var estado = (p.notificar_novidades && canal == "email") ? "pendente" : "enviada";
+
+            return new Notificacao_Recebida
+            {
+                id_utilizador = p.id_utilizador,
+                id_notificacao = notif.id_notificacao,
+                data_envio = now,
+                canal = canal,
+                estado = estado
+            };
+        }).ToList();
+
+        _marketDb.Notificacao_Recebida.AddRange(rows);
+        await _marketDb.SaveChangesAsync();
+    }
+
+
+
 }

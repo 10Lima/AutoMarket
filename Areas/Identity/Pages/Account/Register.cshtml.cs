@@ -4,12 +4,15 @@ using System.Security.Claims;
 using System.Text.RegularExpressions;
 using AutoMarket.Data;
 using AutoMarket.Models.Market;
+using AutoMarket.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace AutoMarket.Areas.Identity.Pages.Account
 {
@@ -250,12 +253,44 @@ namespace AutoMarket.Areas.Identity.Pages.Account
                     });
 
                     // Auditoria: admin atual criou este admin
+                    var motivoAdmin = "Criação de administrador via registo (admin=true)";
                     _marketDb.Ace_Admin_Acao.Add(new Ace_Admin_Acao
                     {
                         id_admin = currentAdminIdUtilizador!.Value,
                         id_utilizador = utilizador.id_utilizador,
                         tipo_acao = "criar_admin",
-                        motivo = "Criação de administrador via registo (admin=true)"
+                        motivo = motivoAdmin
+                    });
+
+                    // ✅ Notificação ao novo admin (admin_criado)
+                    // Regras:
+                    // - vai sempre para a view (Notificacao_Recebida)
+                    // - só fica "pendente" (para email) se notificar_novidades==true e canal=="email"
+                    var payload = new
+                    {
+                        v = 1,
+                        origem = "registo_admin",
+                        id_admin_criador = currentAdminIdUtilizador!.Value
+                    };
+
+                    var notif = new Notificacao
+                    {
+                        tipo = "admin_criado",
+                        titulo = "Agora és Administrador",
+                        texto = "Foste adicionado como Administrador no site AutoMarket.",
+                        payload_json = JsonSerializer.Serialize(payload)
+                    };
+
+                    // canal já foi validado acima (email/sms)
+                    var estadoEnvio = (utilizador.notificar_novidades && canal == "email") ? "pendente" : "enviada";
+
+                    _marketDb.Notificacao_Recebida.Add(new Notificacao_Recebida
+                    {
+                        id_utilizador = utilizador.id_utilizador,
+                        id_notificacaoNavigation = notif, // EF insere Notificacao + Recebida
+                        data_envio = DateTime.UtcNow,
+                        canal = canal,
+                        estado = estadoEnvio
                     });
                 }
                 else
@@ -266,6 +301,7 @@ namespace AutoMarket.Areas.Identity.Pages.Account
                         id_utilizador = utilizador.id_utilizador
                     });
                 }
+
 
                 _marketDb.Morada.Add(new Morada
                 {

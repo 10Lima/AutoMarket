@@ -1,0 +1,43 @@
+@model AutoMarket.Models.Market.Notificacao_Recebida
+
+@{
+    var notif = Model.id_notificacaoNavigation;
+    var isLida = string.Equals(Model.estado, "lida", StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="list-group-item @(isLida ? "" : "fw-semibold")">
+    <div class="d-flex justify-content-between">
+        <div>
+            <div>@notif.titulo</div>
+            @if (!string.IsNullOrWhiteSpace(notif.texto))
+            {
+                <div class="text-muted">@notif.texto</div>
+            }
+            <small class="text-muted">Tipo: @notif.tipo</small>
+        </div>
+
+        <div class="text-end">
+            <small class="text-muted d-block mb-1">
+                @Model.data_envio.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            </small>
+            <span class="badge bg-light text-dark">@Model.estado</span>
+            <span class="badge bg-light text-dark">@Model.canal</span>
+
+            @if (!isLida)
+            {
+                <form asp-controller="Notificacoes" asp-action="MarcarLida" method="post"
+                      class="mt-2 d-inline-block"
+                      data-ajax="true"
+                      data-ajax-method="POST"
+                      data-ajax-mode="replace"
+                      data-ajax-update="#nr-@Model.id_recebida">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="idRecebida" value="@Model.id_recebida" />
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-check2"></i> Marcar como lida
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>

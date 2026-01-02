@@ -4,6 +4,8 @@ using AutoMarket.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+
 
 namespace AutoMarket.Controllers;
 
@@ -111,6 +113,13 @@ public class VenderController : Controller
         try
         {
             await _marketDb.SaveChangesAsync();
+
+            // ✅ Notificações
+            await CriarNotif_CandidaturaSubmetida_UtilizadorAsync(candidatura);
+            await CriarNotif_AdminCandidaturaPendenteAsync(candidatura);
+
+            // grava Notificacao + Notificacao_Recebida
+            await _marketDb.SaveChangesAsync();
         }
         catch (DbUpdateException)
         {
@@ -208,5 +217,96 @@ public class VenderController : Controller
         }
 
         return View();
+    }
+
+    // ============================================================
+    // NOTIFICAÇÕES — Candidaturas (VenderController)
+    // ============================================================
+
+    private static string Notif_NormalizarCanalEmailSms(string? canalPreferido)
+    {
+        var c = (canalPreferido ?? "").Trim().ToLowerInvariant();
+        return (c == "sms") ? "sms" : "email";
+    }
+
+    // só temos dispatcher de email -> sms nunca fica pendente
+    private static string Notif_EstadoEnvio(bool notificarNovidades, string canal)
+    {
+        return (notificarNovidades && canal == "email") ? "pendente" : "enviada";
+    }
+
+    private async Task CriarNotif_CandidaturaSubmetida_UtilizadorAsync(Candidatura_Vendedor candidatura)
+    {
+        var u = await _marketDb.Utilizador
+            .AsNoTracking()
+            .Where(x => x.id_utilizador == candidatura.id_utilizador)
+            .Select(x => new { x.id_utilizador, x.notificar_novidades, x.canal_notificacao_preferido })
+            .FirstOrDefaultAsync();
+
+        if (u == null) return;
+
+        var payload = new { v = 1, id_candidatura = candidatura.id_candidatura, tipo = candidatura.tipo };
+
+        var notif = new Notificacao
+        {
+            tipo = "candidatura_submetida",
+            titulo = "Candidatura submetida",
+            texto = "A tua candidatura para vendedor foi submetida e está em análise.",
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        var canal = Notif_NormalizarCanalEmailSms(u.canal_notificacao_preferido);
+
+        _marketDb.Notificacao_Recebida.Add(new Notificacao_Recebida
+        {
+            id_utilizador = u.id_utilizador,
+            id_notificacaoNavigation = notif,
+            data_envio = DateTime.UtcNow,
+            canal = canal,
+            estado = Notif_EstadoEnvio(u.notificar_novidades, canal)
+        });
+    }
+
+    private async Task CriarNotif_AdminCandidaturaPendenteAsync(Candidatura_Vendedor candidatura)
+    {
+        // admins = linhas em market.Administrador
+        var adminIds = await _marketDb.Administrador
+            .AsNoTracking()
+            .Select(a => a.id_utilizador)
+            .ToListAsync();
+
+        if (adminIds.Count == 0) return;
+
+        var admins = await _marketDb.Utilizador
+            .AsNoTracking()
+            .Where(u => adminIds.Contains(u.id_utilizador))
+            .Select(u => new { u.id_utilizador, u.notificar_novidades, u.canal_notificacao_preferido })
+            .ToListAsync();
+
+        if (admins.Count == 0) return;
+
+        var payload = new { v = 1, id_candidatura = candidatura.id_candidatura, id_utilizador = candidatura.id_utilizador };
+
+        var notif = new Notificacao
+        {
+            tipo = "admin_candidatura_pendente",
+            titulo = "Nova candidatura pendente",
+            texto = "Existe uma nova candidatura pendente para aprovação/rejeição.",
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        foreach (var a in admins)
+        {
+            var canal = Notif_NormalizarCanalEmailSms(a.canal_notificacao_preferido);
+
+            _marketDb.Notificacao_Recebida.Add(new Notificacao_Recebida
+            {
+                id_utilizador = a.id_utilizador,
+                id_notificacaoNavigation = notif,
+                data_envio = DateTime.UtcNow,
+                canal = canal,
+                estado = Notif_EstadoEnvio(a.notificar_novidades, canal)
+            });
+        }
     }
 }

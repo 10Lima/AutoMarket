@@ -1,8 +1,10 @@
 ﻿using AutoMarket.Data;
 using AutoMarket.Services;
+using AutoMarket.Models.Market;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace AutoMarket.Controllers;
 
@@ -110,6 +112,9 @@ public class AdminCandidaturasController : Controller
                 motivo = null
             });
 
+            // ✅ Notificação ao utilizador
+            await CriarNotif_CandidaturaAprovada_UtilizadorAsync(candidatura);
+
             await _marketDb.SaveChangesAsync();
             await tx.CommitAsync();
         }
@@ -169,6 +174,9 @@ public class AdminCandidaturasController : Controller
                 tipo_acao = "rejeitar_vendedor",
                 motivo = motivo
             });
+
+            // ✅ Notificação ao utilizador (com motivo)
+            await CriarNotif_CandidaturaRejeitada_UtilizadorAsync(candidatura, motivo);
 
             await _marketDb.SaveChangesAsync();
             await tx.CommitAsync();
@@ -347,5 +355,73 @@ public class AdminCandidaturasController : Controller
             .Where(mu => mu.identity_user_id == identity.Id)
             .Select(mu => (int?)mu.id_utilizador)
             .FirstOrDefaultAsync();
+    }
+
+    // ============================================================
+    // NOTIFICAÇÕES — Candidaturas (AdminCandidaturasController)
+    // ============================================================
+
+    private static string Notif_NormalizarCanalEmailSms(string? canalPreferido)
+    {
+        var c = (canalPreferido ?? "").Trim().ToLowerInvariant();
+        return (c == "sms") ? "sms" : "email";
+    }
+
+    // só temos dispatcher de email -> sms nunca fica pendente
+    private static string Notif_EstadoEnvio(bool notificarNovidades, string canal)
+    {
+        return (notificarNovidades && canal == "email") ? "pendente" : "enviada";
+    }
+
+    private async Task CriarNotif_CandidaturaAprovada_UtilizadorAsync(Candidatura_Vendedor candidatura)
+    {
+        await CriarNotif_ParaUmUtilizadorAsync(
+            idUtilizador: candidatura.id_utilizador,
+            tipo: "candidatura_aprovada",
+            titulo: "Candidatura aprovada",
+            texto: "A tua candidatura foi aprovada. Já podes começar a vender.",
+            payload: new { v = 1, id_candidatura = candidatura.id_candidatura }
+        );
+    }
+
+    private async Task CriarNotif_CandidaturaRejeitada_UtilizadorAsync(Candidatura_Vendedor candidatura, string motivo)
+    {
+        await CriarNotif_ParaUmUtilizadorAsync(
+            idUtilizador: candidatura.id_utilizador,
+            tipo: "candidatura_rejeitada",
+            titulo: "Candidatura rejeitada",
+            texto: $"A tua candidatura foi rejeitada. Motivo: {motivo}",
+            payload: new { v = 1, id_candidatura = candidatura.id_candidatura, motivo }
+        );
+    }
+
+    private async Task CriarNotif_ParaUmUtilizadorAsync(int idUtilizador, string tipo, string titulo, string texto, object payload)
+    {
+        var u = await _marketDb.Utilizador
+            .AsNoTracking()
+            .Where(x => x.id_utilizador == idUtilizador)
+            .Select(x => new { x.id_utilizador, x.notificar_novidades, x.canal_notificacao_preferido })
+            .FirstOrDefaultAsync();
+
+        if (u == null) return;
+
+        var notif = new Notificacao
+        {
+            tipo = tipo,
+            titulo = titulo,
+            texto = texto,
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        var canal = Notif_NormalizarCanalEmailSms(u.canal_notificacao_preferido);
+
+        _marketDb.Notificacao_Recebida.Add(new Notificacao_Recebida
+        {
+            id_utilizador = u.id_utilizador,
+            id_notificacaoNavigation = notif,
+            data_envio = DateTime.UtcNow,
+            canal = canal,
+            estado = Notif_EstadoEnvio(u.notificar_novidades, canal)
+        });
     }
 }

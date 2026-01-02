@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace AutoMarket.Controllers;
 
@@ -105,6 +106,17 @@ public class AdminGestaoUtilizadoresController : Controller
                 motivo = motivo
             });
 
+            AddNotificacaoParaUtilizador(
+                alvo: u,
+                idAdminAutor: adminId.Value,
+                tipo: "conta_bloqueada",
+                titulo: "Conta bloqueada",
+                texto: string.IsNullOrWhiteSpace(motivo)
+                    ? "A tua conta foi bloqueada por um administrador."
+                    : $"A tua conta foi bloqueada por um administrador. Motivo: {motivo}",
+                motivo: motivo
+            );
+
             await _marketDb.SaveChangesAsync();
             await tx.CommitAsync();
         }
@@ -145,9 +157,20 @@ public class AdminGestaoUtilizadoresController : Controller
             {
                 id_admin = adminId.Value,
                 id_utilizador = u.id_utilizador,
-                tipo_acao = "desbloquear", // ? ALTERADO
+                tipo_acao = "desbloquear",
                 motivo = string.IsNullOrWhiteSpace(motivo) ? null : motivo
             });
+
+            AddNotificacaoParaUtilizador(
+                alvo: u,
+                idAdminAutor: adminId.Value,
+                tipo: "conta_desbloqueada",
+                titulo: "Conta desbloqueada",
+                texto: string.IsNullOrWhiteSpace(motivo)
+                    ? "A tua conta foi desbloqueada por um administrador."
+                    : $"A tua conta foi desbloqueada por um administrador. Motivo: {motivo}",
+                motivo: string.IsNullOrWhiteSpace(motivo) ? null : motivo
+            );
 
             await _marketDb.SaveChangesAsync();
             await tx.CommitAsync();
@@ -210,6 +233,19 @@ public class AdminGestaoUtilizadoresController : Controller
 
             // Remover privilégios admin
             _marketDb.Administrador.Remove(alvoAdmin);
+
+            // ✅ Notificações
+            // 1) Privilégios removidos
+            AddNotificacaoParaUtilizador(
+                alvo: utilizador,
+                idAdminAutor: adminId.Value,
+                tipo: "admin_removido",
+                titulo: "Privilégios de administrador removidos",
+                texto: string.IsNullOrWhiteSpace(motivo)
+                    ? "Os teus privilégios de administrador foram removidos."
+                    : $"Os teus privilégios de administrador foram removidos. Motivo: {motivo}",
+                motivo: motivo
+            );
 
             await _marketDb.SaveChangesAsync();
             await tx.CommitAsync();
@@ -275,6 +311,19 @@ public class AdminGestaoUtilizadoresController : Controller
                 tipo_acao = "recuperar_admin",
                 motivo = string.IsNullOrWhiteSpace(motivo) ? null : motivo
             });
+
+            // ✅ Notificações
+            // 1) Privilégios recuperados
+            AddNotificacaoParaUtilizador(
+                alvo: utilizador,
+                idAdminAutor: adminId.Value,
+                tipo: "admin_recuperado",
+                titulo: "Privilégios de administrador recuperados",
+                texto: string.IsNullOrWhiteSpace(motivo)
+                    ? "Os teus privilégios de administrador foram recuperados."
+                    : $"Os teus privilégios de administrador foram recuperados. Motivo: {motivo}",
+                motivo: string.IsNullOrWhiteSpace(motivo) ? null : motivo
+            );
 
             await _marketDb.SaveChangesAsync();
             await tx.CommitAsync();
@@ -393,5 +442,57 @@ public class AdminGestaoUtilizadoresController : Controller
         );
 
         return (lista, usernames, emails, adminsAtuais, estados, podeRecuperarAdmin);
+    }
+
+    // =========================
+    // Notificações (helpers)
+    // =========================
+    private static string NormalizarCanalEmailSms(string? canalPreferido)
+    {
+        var c = (canalPreferido ?? "").Trim().ToLowerInvariant();
+        return (c == "sms") ? "sms" : "email"; // default email
+    }
+
+    // Só tens worker para email → só "pendente" quando canal=email e notificar_novidades=true
+    private static string EstadoInicialParaEnvioExterno(bool notificarNovidades, string canalNormalizado)
+        => (notificarNovidades && canalNormalizado == "email") ? "pendente" : "enviada";
+
+    private void AddNotificacaoParaUtilizador(
+        Utilizador alvo,
+        int idAdminAutor,
+        string tipo,
+        string titulo,
+        string texto,
+        string? motivo = null)
+    {
+        var canal = NormalizarCanalEmailSms(alvo.canal_notificacao_preferido);
+        var estado = EstadoInicialParaEnvioExterno(alvo.notificar_novidades, canal);
+
+        var payload = new
+        {
+            v = 1,
+            origem = "admin_acao",
+            tipo,
+            id_admin = idAdminAutor,
+            id_utilizador = alvo.id_utilizador,
+            motivo
+        };
+
+        var notif = new Notificacao
+        {
+            tipo = tipo,
+            titulo = titulo,
+            texto = texto,
+            payload_json = JsonSerializer.Serialize(payload)
+        };
+
+        _marketDb.Notificacao_Recebida.Add(new Notificacao_Recebida
+        {
+            id_utilizador = alvo.id_utilizador,
+            id_notificacaoNavigation = notif, // EF cria Notificacao + Recebida
+            data_envio = DateTime.UtcNow,
+            canal = canal,
+            estado = estado
+        });
     }
 }

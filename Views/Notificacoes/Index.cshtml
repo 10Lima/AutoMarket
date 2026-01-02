@@ -1,0 +1,61 @@
+@model List<AutoMarket.Models.Market.Notificacao_Recebida>
+
+@{
+    ViewData["Title"] = "Notificações";
+    bool anonimo = (ViewBag.Anonimo as bool?) == true;
+}
+
+<h2>Notificações</h2>
+
+@if (anonimo)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        Para veres as tuas notificações, faz login.
+    </div>
+}
+else if (Model == null || Model.Count == 0)
+{
+    <div class="alert alert-secondary">
+        <i class="bi bi-inbox"></i>
+        Ainda não tens notificações.
+    </div>
+}
+else
+{
+    <div class="list-group" id="notifList">
+        @foreach (var n in Model)
+        {
+            <div id="nr-@n.id_recebida">
+                @await Html.PartialAsync("_NotificacaoItem", n)
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .list-group-item {
+        transition: all 0.3s ease;
+    }
+
+    .list-group-item.fw-semibold {
+        background-color: #f0f9ff;
+        border-left: 4px solid #3b82f6;
+    }
+
+    .list-group-item:not(.fw-semibold) {
+        opacity: 0.7;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+    }
+
+    .btn-sm {
+        font-size: 0.8rem;
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
