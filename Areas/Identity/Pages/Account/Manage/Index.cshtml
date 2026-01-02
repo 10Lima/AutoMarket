@@ -1,0 +1,52 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Profile";
+    ViewData["ActivePage"] = ManageNavPages.Index;
+}
+
+<div class="manage-page-head mb-3">
+    <h2 class="manage-page-title mb-1">@ViewData["Title"]</h2>
+    <p class="manage-page-subtitle mb-0">Atualiza o teu número de telefone e revê os teus dados.</p>
+</div>
+
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<form id="profile-form" method="post" class="mt-3">
+    <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+
+    <div class="form-floating mb-3">
+        <input asp-for="Username" class="form-control" placeholder="Please choose your username." disabled />
+        <label asp-for="Username" class="form-label"></label>
+    </div>
+
+    <div class="form-floating mb-3">
+        <input asp-for="Input.PhoneNumber" class="form-control" placeholder="Please enter your phone number." />
+        <label asp-for="Input.PhoneNumber" class="form-label"></label>
+        <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
+    </div>
+
+    <!-- mantém o id e o post igual -->
+    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg btn-primary">
+        Save
+    </button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+<style>
+    /* Só estilos locais do conteúdo (sem wrappers) */
+    .manage-page-title {
+        font-weight: 750;
+        color: #111;
+        letter-spacing: -0.4px;
+        margin: 0;
+    }
+
+    .manage-page-subtitle {
+        color: #555;
+        line-height: 1.55;
+    }
+</style>
