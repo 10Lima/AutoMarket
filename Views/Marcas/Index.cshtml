@@ -5,39 +5,45 @@
     var sort = (ViewBag.Sort as string) ?? "az";
 }
 
-<div class="container mt-4">
-    <!-- ✅ HEADER: Botões FORA da área AJAX -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Marcas</h2>
+<div class="register-page">
+    <div class="register-card">
 
-        <div class="btn-group" role="group" aria-label="Ordenação">
-            <!-- ✅ Botão A-Z -->
-            <a href="@Url.Action("_Lista","Marcas", new { sort = "az" })"
-               class="btn js-sort @(sort == "az" ? "btn-primary" : "btn-outline-primary")"
-               data-sort="az"
-               data-ajax="true"
-               data-ajax-mode="replace"
-               data-ajax-update="#marcasList"
-               data-ajax-success="onSortSuccess">
-                A-Z
-            </a>
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+            <div>
+                <h1 class="page-title mb-1">Marcas</h1>
+                <p class="page-subtitle mb-0">
+                    Explora todas as marcas disponíveis no AutoMarket.
+                </p>
+            </div>
 
-            <!-- ✅ Botão Top Marcas -->
-            <a href="@Url.Action("_Lista","Marcas", new { sort = "top" })"
-               class="btn js-sort @(sort == "top" ? "btn-primary" : "btn-outline-primary")"
-               data-sort="top"
-               data-ajax="true"
-               data-ajax-mode="replace"
-               data-ajax-update="#marcasList"
-               data-ajax-success="onSortSuccess">
-                Top Marcas
-            </a>
+            <div class="btn-group">
+                <a href="@Url.Action("_Lista", "Marcas", new { sort = "az" })"
+                   class="btn js-sort @(sort == "az" ? "btn-dark-custom" : "btn-outline-dark-custom")"
+                   data-sort="az"
+                   data-ajax="true"
+                   data-ajax-mode="replace"
+                   data-ajax-update="#marcasList"
+                   data-ajax-success="onSortSuccess">
+                    A-Z
+                </a>
+
+                <a href="@Url.Action("_Lista", "Marcas", new { sort = "top" })"
+                   class="btn js-sort @(sort == "top" ? "btn-dark-custom" : "btn-outline-dark-custom")"
+                   data-sort="top"
+                   data-ajax="true"
+                   data-ajax-mode="replace"
+                   data-ajax-update="#marcasList"
+                   data-ajax-success="onSortSuccess">
+                    Top Marcas
+                </a>
+            </div>
         </div>
-    </div>
 
-    <!-- ✅ ÁREA AJAX: Só a lista é atualizada -->
-    <div id="marcasList" data-current-sort="@sort">
-        <partial name="_MarcasLista" model="Model" />
+        <!-- LISTA (AJAX) -->
+        <div id="marcasList" data-current-sort="@sort">
+            <partial name="_MarcasLista" model="Model" />
+        </div>
     </div>
 </div>
 
@@ -45,33 +51,24 @@
     <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
 
     <script>
-        // ✅ FUNÇÃO 1: Atualizar estado visual dos botões
         function setSortButtons(sort) {
-            // Guardar o sort atual no container
             $("#marcasList").attr("data-current-sort", sort);
 
-            // Atualizar classes de TODOS os botões
             $(".js-sort").each(function () {
                 var btnSort = $(this).data("sort");
-                
                 if (btnSort === sort) {
-                    // Botão ativo: azul
-                    $(this).removeClass("btn-outline-primary").addClass("btn-primary");
+                    $(this).removeClass("btn-outline-dark-custom").addClass("btn-dark-custom");
                 } else {
-                    // Botão inativo: branco
-                    $(this).removeClass("btn-primary").addClass("btn-outline-primary");
+                    $(this).removeClass("btn-dark-custom").addClass("btn-outline-dark-custom");
                 }
             });
         }
 
-        // ✅ FUNÇÃO 2: Callback do AJAX (executada DEPOIS do update)
         function onSortSuccess() {
-            // O "this" aqui é o elemento que disparou o AJAX (o link clicado)
             var sort = $(this).data("sort");
             setSortButtons(sort);
         }
 
-        // ✅ Callback de sucesso do AJAX (atualiza ícone)
         function onFavSuccess(data) {
             if (!data || !data.idMarca) return;
 
@@ -79,17 +76,14 @@
             if (!icon) return;
 
             if (data.favorito === true) {
-                // Marca foi FAVORITADA
                 icon.classList.remove("bi-heart", "text-muted");
                 icon.classList.add("bi-heart-fill", "text-danger");
             } else {
-                // Marca foi DESFAVORITADA
                 icon.classList.remove("bi-heart-fill", "text-danger");
                 icon.classList.add("bi-heart", "text-muted");
             }
         }
 
-        // ✅ Callback de falha (redireciona se não autorizado)
         function onFavFail(xhr) {
             if (xhr.status === 401 || xhr.status === 403) {
                 var returnUrl = window.location.pathname + window.location.search;
@@ -98,3 +92,47 @@
         }
     </script>
 }
+
+<style>
+    .register-page {
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        background: #f5f5f5;
+        min-height: calc(100vh - 70px);
+        padding: 32px 20px;
+    }
+
+    .register-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 40px;
+        max-width: 1400px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+
+    .page-title {
+        font-weight: 750;
+        letter-spacing: -.4px;
+        color: #111;
+    }
+
+    .page-subtitle {
+        color: #555;
+    }
+
+    .btn-dark-custom {
+        background: #000;
+        color: #fff;
+        border-radius: 12px;
+        border: none;
+        font-weight: 600;
+    }
+
+    .btn-outline-dark-custom {
+        border: 2px solid #000;
+        color: #000;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+</style>

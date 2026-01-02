@@ -2,361 +2,577 @@
 @{
     ViewData["Title"] = "Criar anúncio";
     var marcas = ViewBag.Marcas as IEnumerable<Marca> ?? Enumerable.Empty<Marca>();
-    
+
     // ✅ Modo editar
     var isEdit = (ViewBag.IsEdit as bool?) == true;
     var editId = (int?)(ViewBag.EditId ?? null);
-    
+
     if (isEdit)
         ViewData["Title"] = "Editar anúncio";
 }
 
 <style>
-  .img-grid{
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:18px;
-  }
-  @@media (max-width:1200px){ .img-grid{ grid-template-columns:repeat(3,1fr);} }
-  @@media (max-width:800px){ .img-grid{ grid-template-columns:repeat(2,1fr);} }
+    /* ===== PAGE WRAP (igual ao teu estilo) ===== */
+    .register-page {
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        background-color: #f5f5f5;
+        min-height: calc(100vh - 70px);
+        padding: 32px 20px;
+    }
 
-  .img-slot{
-    border-radius:18px;
-    overflow:hidden;
-    aspect-ratio:4/3;
-    background:#eeeeee;
-    position:relative;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
+    .register-card {
+        background-color: #ffffff;
+        border-radius: 14px;
+        padding: 40px;
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
 
-  /* placeholder com câmara (como na print) */
-  .img-slot.empty::after{
-    content:"📷";
-    font-size:34px;
-    opacity:.35;
-  }
+    @@media (min-width: 1200px) {
+        .register-card {
+            max-width: 1600px;
+        }
+    }
 
-  /* slot preenchido */
-  .img-slot.filled{ background:#f3f4f6; }
-  .img-slot img{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    transform-origin:center center;
-    user-select:none;
-    -webkit-user-drag:none;
-  }
+    /* ===== TITULOS ===== */
+    .page-title {
+        margin: 0;
+        font-weight: 750;
+        color: #111;
+        letter-spacing: -0.4px;
+        font-size: clamp(28px, 3vw, 40px);
+    }
 
-  .principal-badge{
-    position:absolute; left:0; bottom:0;
-    padding:10px 14px;
-    font-weight:800; font-size:13px;
-    background:#26d7d0; color:#000;
-    border-top-right-radius:12px;
-    z-index:5;
-  }
+    .page-subtitle {
+        margin: 8px 0 0 0;
+        color: #555;
+        line-height: 1.6;
+    }
 
-  .overlay{
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    gap:18px;
-    opacity:0; transition:opacity .15s ease;
-    background:rgba(0,0,0,.45);
-    z-index:4;
-  }
-  .img-slot.filled:hover .overlay{ opacity:1; }
+    .section-title {
+        font-weight: 700;
+        color: #111;
+        margin: 0;
+    }
 
-  .btn-round{
-    width:58px; height:58px; border-radius:50%;
-    border:none; cursor:pointer;
-    background:rgba(255,255,255,.95);
-    display:inline-flex; align-items:center; justify-content:center;
-    font-size:26px;
-  }
+    .section-sub {
+        color: #6c757d;
+        margin: 6px 0 0 0;
+        font-size: 14px;
+        line-height: 1.5;
+    }
 
-  /* add tile */
-  .add-tile{
-    background:#fbf6e9;
-    cursor:pointer;
-    flex-direction:column;
-    gap:14px;
-  }
-  .add-text{ font-size:26px; font-weight:800; color:#0b2b2a; }
-  .add-line{ width:70%; height:3px; background:#0b2b2a; border-radius:99px; opacity:.9; }
+    .soft-hr {
+        margin: 18px 0 22px 0;
+        border-top: 1px solid rgba(0,0,0,0.10);
+        opacity: 1;
+    }
 
-  .sortable-ghost{ opacity:.35; }
-  .sortable-chosen{
-    outline:3px solid rgba(91,157,255,.65);
-    outline-offset:4px;
-    border-radius:18px;
-  }
+    /* ===== SECTION CARDS ===== */
+    .section-card {
+        background: #fff;
+        border: 1px solid rgba(0,0,0,0.06);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+        margin-top: 16px;
+    }
 
-  /* ✅ Campos auto-preenchidos: fundo cinzento */
-  .autofill {
-      background-color: #e9ecef !important;
-      cursor: not-allowed;
-      color: #495057;
-  }
+    /* ===== INPUTS ===== */
+    .form-control,
+    .form-select {
+        border-radius: 10px;
+        border: 1px solid #d0d0d0;
+    }
 
-  /* ✅ Color swatch no Select2 */
-  .color-swatch {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border-radius: 3px;
-      margin-right: 8px;
-      vertical-align: middle;
-      border: 1px solid #ddd;
-  }
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #000;
+            box-shadow: 0 0 0 0.15rem rgba(0, 0, 0, 0.12);
+        }
 
-  .img-block-title {
-      font-size: 18px;
-      font-weight: 600;
-      margin-top: 20px;
-      margin-bottom: 8px;
-  }
+    /* ===== CHECKBOX ===== */
+    .form-check-input:checked {
+        background-color: #000;
+        border-color: #000;
+    }
 
-  .img-block-sub {
-      color: #6c757d;
-      font-size: 14px;
-      margin-bottom: 16px;
-  }
+    .form-check-input:focus {
+        box-shadow: 0 0 0 0.15rem rgba(0, 0, 0, 0.12);
+    }
 
-  /* ✅ Slot amarelo dinâmico */
-  .img-slot.add-tile{
-    background:#fbf6e9;
-    cursor:pointer;
-    flex-direction:column;
-    gap:14px;
-  }
-  .img-slot.add-tile::after{ content:""; } /* remove câmara no amarelo */
+    /* ===== BOTÕES ===== */
+    .btn-primary {
+        background-color: #000 !important;
+        border-color: #000 !important;
+        color: #fff !important;
+        border-radius: 12px;
+        font-weight: 650;
+        padding: 12px 14px;
+    }
 
-  .img-slot.add-tile .add-text{
-    font-size:26px;
-    font-weight:800;
-    color:#0b2b2a;
-  }
-  .img-slot.add-tile .add-line{
-    width:70%;
-    height:3px;
-    background:#0b2b2a;
-    border-radius:99px;
-    opacity:.9;
-  }
+        .btn-primary:hover {
+            background-color: #1b1b1b !important;
+            border-color: #1b1b1b !important;
+        }
+
+    .btn-secondary {
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-weight: 650;
+    }
+
+    /* ===== mensagens ===== */
+    .validation-wrap {
+        border-radius: 12px;
+        padding: 14px 16px;
+        background: rgba(220, 53, 69, 0.06);
+        border: 1px solid rgba(220, 53, 69, 0.18);
+    }
+
+        /* ✅ VISUAL ONLY: esconde o bloco quando não há erros */
+        .validation-wrap:empty {
+            display: none;
+        }
+
+        .validation-wrap.validation-summary-valid {
+            display: none;
+        }
+
+
+    /* =========================================================
+               ✅ O TEU CSS ORIGINAL (IMAGENS / SELECT2 / ETC) - INTACTO
+               ========================================================= */
+    .img-grid {
+        display: grid;
+        grid-template-columns: repeat(4,minmax(0,1fr));
+        gap: 18px;
+    }
+
+    @@media (max-width:1200px) {
+        .img-grid {
+            grid-template-columns: repeat(3,1fr);
+        }
+    }
+
+    @@media (max-width:800px) {
+        .img-grid {
+            grid-template-columns: repeat(2,1fr);
+        }
+    }
+
+    .img-slot {
+        border-radius: 18px;
+        overflow: hidden;
+        aspect-ratio: 4/3;
+        background: #eeeeee;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .img-slot.empty::after {
+            content: "📷";
+            font-size: 34px;
+            opacity: .35;
+        }
+
+        .img-slot.filled {
+            background: #f3f4f6;
+        }
+
+        .img-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform-origin: center center;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+    .principal-badge {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        padding: 10px 14px;
+        font-weight: 800;
+        font-size: 13px;
+        background: #26d7d0;
+        color: #000;
+        border-top-right-radius: 12px;
+        z-index: 5;
+    }
+
+    .overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        opacity: 0;
+        transition: opacity .15s ease;
+        background: rgba(0,0,0,.45);
+        z-index: 4;
+    }
+
+    .img-slot.filled:hover .overlay {
+        opacity: 1;
+    }
+
+    .btn-round {
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        background: rgba(255,255,255,.95);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+    }
+
+    .add-tile {
+        background: #fbf6e9;
+        cursor: pointer;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .add-text {
+        font-size: 26px;
+        font-weight: 800;
+        color: #0b2b2a;
+    }
+
+    .add-line {
+        width: 70%;
+        height: 3px;
+        background: #0b2b2a;
+        border-radius: 99px;
+        opacity: .9;
+    }
+
+    .sortable-ghost {
+        opacity: .35;
+    }
+
+    .sortable-chosen {
+        outline: 3px solid rgba(91,157,255,.65);
+        outline-offset: 4px;
+        border-radius: 18px;
+    }
+
+    .autofill {
+        background-color: #e9ecef !important;
+        cursor: not-allowed;
+        color: #495057;
+    }
+
+    .color-swatch {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        margin-right: 8px;
+        vertical-align: middle;
+        border: 1px solid #ddd;
+    }
+
+    .img-block-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-top: 0;
+        margin-bottom: 8px;
+        color: #111;
+    }
+
+    .img-block-sub {
+        color: #6c757d;
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+
+    .img-slot.add-tile {
+        background: #fbf6e9;
+        cursor: pointer;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+        .img-slot.add-tile::after {
+            content: "";
+        }
+
+        .img-slot.add-tile .add-text {
+            font-size: 26px;
+            font-weight: 800;
+            color: #0b2b2a;
+        }
+
+        .img-slot.add-tile .add-line {
+            width: 70%;
+            height: 3px;
+            background: #0b2b2a;
+            border-radius: 99px;
+            opacity: .9;
+        }
+
+    /* ===== MOBILE ===== */
+    @@media (max-width: 576px) {
+        .register-page {
+            padding: 18px 12px;
+        }
+
+        .register-card {
+            padding: 22px;
+        }
+
+        .section-card {
+            padding: 16px;
+        }
+    }
 </style>
 
-<h1>@ViewData["Title"]</h1>
+<div class="register-page">
+    <div class="register-card">
 
-<form method="post"
-      enctype="multipart/form-data"
-      id="formCriarAnuncio"
-      asp-controller="Anuncios"
-      asp-action="@(isEdit ? "Editar" : "Criar")"
-      asp-route-id="@(isEdit ? editId : null)">
-    
-    @Html.AntiForgeryToken()
-    <div asp-validation-summary="All" class="text-danger mb-3"></div>
-
-    <!-- ========================================
-         CASCATA: Marca → Modelo → Sub-Modelo
-         ======================================== -->
-    <div class="row">
-        <div class="col-md-4">
-            <label class="form-label">Marca</label>
-            <select id="marcaSelect" name="id_marca" class="form-select">
-                <option value="">— Marca —</option>
-                @foreach (var m in marcas)
-                {
-                    <option value="@m.id_marca">@m.nome</option>
-                }
-            </select>
-            <span class="text-danger">@Html.ValidationMessage("id_marca")</span>
-        </div>
-
-        <div class="col-md-4">
-            <label class="form-label">Modelo</label>
-            <select id="modeloSelect" name="id_modelo" class="form-select" disabled>
-                <option value="">— Modelo —</option>
-            </select>
-            <span class="text-danger">@Html.ValidationMessage("id_modelo")</span>
-        </div>
-
-        <div class="col-md-4">
-            <label class="form-label">Sub-modelo</label>
-            <select id="subModeloSelect" name="id_sub_modelo" class="form-select" disabled>
-                <option value="">— Sub-modelo —</option>
-            </select>
-            <span class="text-danger">@Html.ValidationMessage("id_sub_modelo")</span>
-        </div>
-    </div>
-
-    <hr />
-
-    <!-- ========================================
-         ESPECIFICAÇÕES (auto-preenchidas)
-         ======================================== -->
-    <h5>Especificações (auto-preenchidas)</h5>
-    <div class="row">
-        <div class="col-md-3">
-            <label class="form-label">Cilindrada</label>
-            <input id="cilindrada" class="form-control autofill" readonly />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Potência (hp)</label>
-            <input id="potencia" class="form-control autofill" readonly />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Combustível</label>
-            <input id="combustivel" class="form-control autofill" readonly />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Caixa</label>
-            <input id="caixa" class="form-control autofill" readonly />
-        </div>
-    </div>
-
-    <div class="row mt-2">
-        <div class="col-md-3">
-            <label class="form-label">Categoria</label>
-            <input id="categoria" class="form-control autofill" readonly />
-        </div>
-    </div>
-
-    <hr />
-
-    <!-- ========================================
-         DADOS DO ANÚNCIO (VERSÃO CORRIGIDA)
-         ======================================== -->
-    <h5>Dados do anúncio</h5>
-
-    <div class="row">
-        <!-- ✅ Ano: SEM required fixo -->
-        <div class="col-md-3">
-            <label class="form-label">Ano</label>
-            <input name="ano" type="number" class="form-control" min="1900" max="2100" />
-        </div>
-
-        <!-- ✅ Quilometragem: SEM required fixo -->
-        <div class="col-md-3">
-            <label class="form-label">Quilometragem</label>
-            <input name="quilometragem" type="number" class="form-control" min="0" />
-        </div>
-
-        <!-- ✅ Cor: SEM required fixo -->
-        <div class="col-md-3">
-            <label class="form-label">Cor</label>
-            <select id="corSelect" name="cor" class="form-select">
-                <option value="">— Cor —</option>
-                <option value="Amarelo"  data-color="#FFD700">Amarelo</option>
-                <option value="Azul"     data-color="#1E90FF">Azul</option>
-                <option value="Bege"     data-color="#F5F5DC">Bege</option>
-                <option value="Branco"   data-color="#FFFFFF">Branco</option>
-                <option value="Castanho" data-color="#8B4513">Castanho</option>
-                <option value="Cinzento" data-color="#808080">Cinzento</option>
-                <option value="Dourado"  data-color="#D4AF37">Dourado</option>
-                <option value="Laranja"  data-color="#FFA500">Laranja</option>
-                <option value="Preto"    data-color="#000000">Preto</option>
-                <option value="Prateado" data-color="#C0C0C0">Prateado</option>
-                <option value="Rosa"     data-color="#FF69B4">Rosa</option>
-                <option value="Roxo"     data-color="#800080">Roxo</option>
-                <option value="Verde"    data-color="#008000">Verde</option>
-                <option value="Vermelho" data-color="#FF0000">Vermelho</option>
-            </select>
-            <span class="text-danger">@Html.ValidationMessage("cor")</span>
-        </div>
-
-        <!-- ✅ Preço: SEM required fixo (só 1 input!) -->
-        <div class="col-md-3">
-            <label class="form-label">Preço (€)</label>
-            <input name="preco" type="number" step="0.01" class="form-control" />
-            <span class="text-danger">@Html.ValidationMessage("preco")</span>
-        </div>
-    </div>
-
-    <!-- ✅ Prazo + Destaque -->
-    <div class="row mt-3">
-        <div class="col-md-3">
-            <label class="form-label">Prazo de reserva</label>
-            <select name="prazo_reserva_dias" class="form-select">
-                <option value="1">1 dia (24h)</option>
-                <option value="2">2 dias (48h)</option>
-                <option value="3">3 dias (72h)</option>
-                <option value="4">4 dias (96h)</option>
-                <option value="5">5 dias (120h)</option>
-                <option value="6">6 dias (144h)</option>
-                <option value="7" selected>7 dias (168h)</option>
-            </select>
-        </div>
-
-        <div class="col-md-3 d-flex align-items-end">
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="destaque" value="true" id="destaqueChk" />
-                <label class="form-check-label" for="destaqueChk">Destacar anúncio</label>
-                <input type="hidden" name="destaque" value="false" />
+        <div class="d-flex align-items-end justify-content-between flex-wrap gap-3">
+            <div>
+                <h1 class="page-title">@ViewData["Title"]</h1>
+                <p class="page-subtitle">
+                    Preenche os dados do anúncio e adiciona imagens. Podes publicar ou guardar como rascunho, para guardar como rascunho preenche título, marca, modelo e sub-modelo.
+                </p>
             </div>
         </div>
+
+        <hr class="soft-hr" />
+
+        <form method="post"
+              enctype="multipart/form-data"
+              id="formCriarAnuncio"
+              asp-controller="Anuncios"
+              asp-action="@(isEdit ? "Editar" : "Criar")"
+              asp-route-id="@(isEdit ? editId : null)">
+
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="All" class="text-danger mb-3 validation-wrap"></div>
+
+            <!-- =========================
+                 CASCATA
+                 ========================= -->
+            <div class="section-card">
+                <h2 class="section-title h5">Marca e modelo</h2>
+                <p class="section-sub">Escolhe marca, modelo e sub-modelo para preencher as especificações automaticamente.</p>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <label class="form-label">Marca</label>
+                        <select id="marcaSelect" name="id_marca" class="form-select">
+                            <option value="">— Marca —</option>
+                            @foreach (var m in marcas)
+                            {
+                                <option value="@m.id_marca">@m.nome</option>
+                            }
+                        </select>
+                        <span class="text-danger">@Html.ValidationMessage("id_marca")</span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Modelo</label>
+                        <select id="modeloSelect" name="id_modelo" class="form-select" disabled>
+                            <option value="">— Modelo —</option>
+                        </select>
+                        <span class="text-danger">@Html.ValidationMessage("id_modelo")</span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Sub-modelo</label>
+                        <select id="subModeloSelect" name="id_sub_modelo" class="form-select" disabled>
+                            <option value="">— Sub-modelo —</option>
+                        </select>
+                        <span class="text-danger">@Html.ValidationMessage("id_sub_modelo")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =========================
+                 ESPECIFICAÇÕES
+                 ========================= -->
+            <div class="section-card">
+                <h2 class="section-title h5">Especificações</h2>
+                <p class="section-sub">Campos auto-preenchidos com base no sub-modelo selecionado.</p>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-3">
+                        <label class="form-label">Cilindrada</label>
+                        <input id="cilindrada" class="form-control autofill" readonly />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Potência (hp)</label>
+                        <input id="potencia" class="form-control autofill" readonly />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Combustível</label>
+                        <input id="combustivel" class="form-control autofill" readonly />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Caixa</label>
+                        <input id="caixa" class="form-control autofill" readonly />
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-md-3">
+                        <label class="form-label">Categoria</label>
+                        <input id="categoria" class="form-control autofill" readonly />
+                    </div>
+                </div>
+            </div>
+
+            <!-- =========================
+                 DADOS DO ANÚNCIO
+                 ========================= -->
+            <div class="section-card">
+                <h2 class="section-title h5">Dados do anúncio</h2>
+                <p class="section-sub">Preenche o essencial. Ao publicar, alguns campos tornam-se obrigatórios.</p>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-3">
+                        <label class="form-label">Ano</label>
+                        <input name="ano" type="number" class="form-control" min="1900" max="2100" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Quilometragem</label>
+                        <input name="quilometragem" type="number" class="form-control" min="0" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Cor</label>
+                        <select id="corSelect" name="cor" class="form-select">
+                            <option value="">— Cor —</option>
+                            <option value="Amarelo" data-color="#FFD700">Amarelo</option>
+                            <option value="Azul" data-color="#1E90FF">Azul</option>
+                            <option value="Bege" data-color="#F5F5DC">Bege</option>
+                            <option value="Branco" data-color="#FFFFFF">Branco</option>
+                            <option value="Castanho" data-color="#8B4513">Castanho</option>
+                            <option value="Cinzento" data-color="#808080">Cinzento</option>
+                            <option value="Dourado" data-color="#D4AF37">Dourado</option>
+                            <option value="Laranja" data-color="#FFA500">Laranja</option>
+                            <option value="Preto" data-color="#000000">Preto</option>
+                            <option value="Prateado" data-color="#C0C0C0">Prateado</option>
+                            <option value="Rosa" data-color="#FF69B4">Rosa</option>
+                            <option value="Roxo" data-color="#800080">Roxo</option>
+                            <option value="Verde" data-color="#008000">Verde</option>
+                            <option value="Vermelho" data-color="#FF0000">Vermelho</option>
+                        </select>
+                        <span class="text-danger">@Html.ValidationMessage("cor")</span>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Preço (€)</label>
+                        <input name="preco" type="number" step="0.01" class="form-control" />
+                        <span class="text-danger">@Html.ValidationMessage("preco")</span>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Prazo de reserva</label>
+                        <select name="prazo_reserva_dias" class="form-select">
+                            <option value="1">1 dia (24h)</option>
+                            <option value="2">2 dias (48h)</option>
+                            <option value="3">3 dias (72h)</option>
+                            <option value="4">4 dias (96h)</option>
+                            <option value="5">5 dias (120h)</option>
+                            <option value="6">6 dias (144h)</option>
+                            <option value="7" selected>7 dias (168h)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="destaque" value="true" id="destaqueChk" />
+                            <label class="form-check-label" for="destaqueChk">Destacar anúncio</label>
+                            <input type="hidden" name="destaque" value="false" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">Título</label>
+                    <input name="titulo" class="form-control" required />
+                    <span class="text-danger">@Html.ValidationMessage("titulo")</span>
+                </div>
+
+                <div class="mt-2">
+                    <label class="form-label">Localização</label>
+                    <input name="localizacao" class="form-control" />
+                    <span class="text-danger">@Html.ValidationMessage("localizacao")</span>
+                </div>
+
+                <div class="mt-2">
+                    <label class="form-label">Descrição</label>
+                    <textarea name="descricao" class="form-control" rows="4"></textarea>
+                </div>
+            </div>
+
+            <!-- =========================
+                 IMAGENS
+                 ========================= -->
+            <div class="section-card">
+                <div class="img-block-title">Imagens</div>
+                <div class="img-block-sub">
+                    A primeira imagem é a foto principal do teu anúncio. Arrasta e larga imagens para alterares a ordem.
+                </div>
+
+                <div id="imgGrid" class="img-grid">
+                    <div class="img-slot" data-slot="0"></div>
+                    <div class="img-slot" data-slot="1"></div>
+                    <div class="img-slot" data-slot="2"></div>
+                    <div class="img-slot" data-slot="3"></div>
+                    <div class="img-slot" data-slot="4"></div>
+                    <div class="img-slot" data-slot="5"></div>
+                    <div class="img-slot" data-slot="6"></div>
+                    <div class="img-slot" data-slot="7"></div>
+                    <div class="img-slot" data-slot="8"></div>
+                    <div class="img-slot" data-slot="9"></div>
+                    <div class="img-slot" data-slot="10"></div>
+                    <div class="img-slot" data-slot="11"></div>
+                </div>
+
+                <input id="imagens" name="imagens" type="file" accept="image/*" multiple hidden />
+                <input type="hidden" id="imagensMeta" name="imagensMeta" value="[]" />
+                <input type="hidden" id="imagensOrder" name="imagensOrder" value="" />
+
+                <div class="mt-2">
+                    <span class="text-danger">@Html.ValidationMessage("imagens")</span>
+                </div>
+            </div>
+
+            <!-- =========================
+                 AÇÕES
+                 ========================= -->
+            <div class="mt-4 d-flex flex-wrap gap-2">
+                <button type="submit" name="submitAction" value="publicar" class="btn btn-primary">
+                    <i class="bi bi-check-circle"></i> Publicar anúncio
+                </button>
+
+                <button type="submit" name="submitAction" value="rascunho" class="btn btn-secondary">
+                    <i class="bi bi-save"></i> Guardar como rascunho
+                </button>
+            </div>
+
+        </form>
     </div>
-
-    <!-- ✅ Título: SEMPRE required -->
-    <div class="mt-3">
-        <label class="form-label">Título</label>
-        <input name="titulo" class="form-control" required />
-        <span class="text-danger">@Html.ValidationMessage("titulo")</span>
-    </div>
-
-    <!-- ✅ Localização: SEM required fixo -->
-    <div class="mt-2">
-        <label class="form-label">Localização</label>
-        <input name="localizacao" class="form-control" />
-        <span class="text-danger">@Html.ValidationMessage("localizacao")</span>
-    </div>
-
-    <!-- ✅ Descrição -->
-    <div class="mt-2">
-        <label class="form-label">Descrição</label>
-        <textarea name="descricao" class="form-control" rows="4"></textarea>
-    </div>
-
-    <!-- ✅ BLOCO DE IMAGENS (12 SLOTS) -->
-    <div class="img-block-title">Imagens</div>
-    <div class="img-block-sub">
-        A primeira imagem é a foto principal do teu anúncio. Arrasta e larga imagens para alterares a ordem.
-    </div>
-
-    <div id="imgGrid" class="img-grid">
-        <div class="img-slot" data-slot="0"></div>
-        <div class="img-slot" data-slot="1"></div>
-        <div class="img-slot" data-slot="2"></div>
-        <div class="img-slot" data-slot="3"></div>
-        <div class="img-slot" data-slot="4"></div>
-        <div class="img-slot" data-slot="5"></div>
-        <div class="img-slot" data-slot="6"></div>
-        <div class="img-slot" data-slot="7"></div>
-        <div class="img-slot" data-slot="8"></div>
-        <div class="img-slot" data-slot="9"></div>
-        <div class="img-slot" data-slot="10"></div>
-        <div class="img-slot" data-slot="11"></div>
-    </div>
-
-    <input id="imagens" name="imagens" type="file" accept="image/*" multiple hidden />
-    <input type="hidden" id="imagensMeta" name="imagensMeta" value="[]" />
-    <input type="hidden" id="imagensOrder" name="imagensOrder" value="" />
-
-    <span class="text-danger">@Html.ValidationMessage("imagens")</span>
-
-    <!-- ✅ DOIS BOTÕES -->
-    <div class="mt-4">
-        <button type="submit" name="submitAction" value="publicar" class="btn btn-primary">
-            <i class="bi bi-check-circle"></i> Publicar anúncio
-        </button>
-
-        <button type="submit" name="submitAction" value="rascunho" class="btn btn-secondary ms-2">
-            <i class="bi bi-save"></i> Guardar como rascunho
-        </button>
-    </div>
-</form>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
@@ -364,9 +580,9 @@
     <script>
         // ✅ Dados do editar (JSON) - CORRIGIDO para evitar RuntimeBinderException
         @{
-            var editDataObj = (object?)(ViewBag.EditData);
-            var modelosObj = (object?)(ViewBag.Modelos ?? Array.Empty<object>());
-            var submodelosObj = (object?)(ViewBag.SubModelos ?? Array.Empty<object>());
+                var editDataObj = (object?)(ViewBag.EditData);
+                var modelosObj = (object?)(ViewBag.Modelos ?? Array.Empty<object>());
+                var submodelosObj = (object?)(ViewBag.SubModelos ?? Array.Empty<object>());
         }
 
         const editData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(editDataObj));
@@ -455,11 +671,11 @@
                 }
                 $sub.prop("disabled", false);
                 initSelect2($sub, "— Sub-modelo —");
-                
+
                 // ✅ CORREÇÃO: Dispara "change" E "change.select2" para preencher specs
                 $sub.val(String(editData.id_sub_modelo))
                     .trigger("change.select2")
-                    .trigger("change"); // ✅ Isto dispara o handler que carrega specs!
+                    .trigger("change");
 
                 // Campos
                 $("input[name='ano']").val(editData.ano);
@@ -486,7 +702,7 @@
                 const idMarca = $(this).val();
                 if (!idMarca) return;
 
-                const list = await loadJson(`@Url.Action("GetModelos","Anuncios")?idMarca=${idMarca}`);
+                const list = await loadJson(`@Url.Action("GetModelos", "Anuncios")?idMarca=${idMarca}`);
                 const items = list ?? [];
 
                 for (const it of items) {
@@ -505,7 +721,7 @@
                 const idModelo = $(this).val();
                 if (!idModelo) return;
 
-                const list = await loadJson(`@Url.Action("GetSubModelos","Anuncios")?idModelo=${idModelo}`);
+                const list = await loadJson(`@Url.Action("GetSubModelos", "Anuncios")?idModelo=${idModelo}`);
                 const items = list ?? [];
 
                 for (const it of items) {
@@ -522,7 +738,7 @@
                 const idSub = $(this).val();
                 if (!idSub) return;
 
-                const s = await loadJson(`@Url.Action("GetSpecs","Anuncios")?idSubModelo=${idSub}`);
+                const s = await loadJson(`@Url.Action("GetSpecs", "Anuncios")?idSubModelo=${idSub}`);
                 if (!s) return;
 
                 $("#cilindrada").val(s.cilindrada ?? "");
@@ -537,209 +753,209 @@
         // ✅ IMAGENS: GRID COM TILE AMARELO DINÂMICO
         // ========================================
         (function () {
-          const grid = document.getElementById("imgGrid");
-          const input = document.getElementById("imagens");
-          const orderHidden = document.getElementById("imagensOrder");
+            const grid = document.getElementById("imgGrid");
+            const input = document.getElementById("imagens");
+            const orderHidden = document.getElementById("imagensOrder");
 
-          const slots = Array.from(grid.querySelectorAll(".img-slot"));
-          const MAX = slots.length;
+            const slots = Array.from(grid.querySelectorAll(".img-slot"));
+            const MAX = slots.length;
 
-          let items = [];
+            let items = [];
 
-          function sameFile(a,b){
-            return a.name===b.name && a.size===b.size && a.lastModified===b.lastModified;
-          }
-
-          function syncFilesAndOrder(){
-            const dt = new DataTransfer();
-            let newCounter = 0;
-            const tokens = [];
-
-            for(const it of items){
-              if(it.kind==="db"){
-                tokens.push(`db:${it.dbId}`);
-              } else {
-                dt.items.add(it.file);
-                tokens.push(`new:${newCounter++}`);
-              }
+            function sameFile(a, b) {
+                return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
             }
 
-            input.files = dt.files;
-            orderHidden.value = tokens.join(",");
-          }
+            function syncFilesAndOrder() {
+                const dt = new DataTransfer();
+                let newCounter = 0;
+                const tokens = [];
 
-          function clearSlot(slot){
-            slot.className = "img-slot";
-            slot.innerHTML = "";
-            slot.dataset.itemId = "";
-          }
+                for (const it of items) {
+                    if (it.kind === "db") {
+                        tokens.push(`db:${it.dbId}`);
+                    } else {
+                        dt.items.add(it.file);
+                        tokens.push(`new:${newCounter++}`);
+                    }
+                }
 
-          function setPrincipalBadge(slot){
-            const badge = document.createElement("div");
-            badge.className = "principal-badge";
-            badge.textContent = "PRINCIPAL";
-            slot.appendChild(badge);
-          }
+                input.files = dt.files;
+                orderHidden.value = tokens.join(",");
+            }
 
-          function fillSlot(slot, it){
-            slot.classList.add("filled");
-            slot.dataset.itemId = it.id;
+            function clearSlot(slot) {
+                slot.className = "img-slot";
+                slot.innerHTML = "";
+                slot.dataset.itemId = "";
+            }
 
-            const img = document.createElement("img");
-            img.src = it.url;
-            img.draggable = false;
-            img.style.transform = `rotate(${it.rotation || 0}deg)`;
+            function setPrincipalBadge(slot) {
+                const badge = document.createElement("div");
+                badge.className = "principal-badge";
+                badge.textContent = "PRINCIPAL";
+                slot.appendChild(badge);
+            }
 
-            const overlay = document.createElement("div");
-            overlay.className = "overlay";
+            function fillSlot(slot, it) {
+                slot.classList.add("filled");
+                slot.dataset.itemId = it.id;
 
-            const btnRotate = document.createElement("button");
-            btnRotate.type = "button";
-            btnRotate.className = "btn-round";
-            btnRotate.title = "Rodar 90º";
-            btnRotate.innerHTML = "⟲";
-            btnRotate.addEventListener("click", (e) => {
-              e.stopPropagation();
-              it.rotation = ((it.rotation || 0) + 90) % 360;
-              img.style.transform = `rotate(${it.rotation}deg)`;
+                const img = document.createElement("img");
+                img.src = it.url;
+                img.draggable = false;
+                img.style.transform = `rotate(${it.rotation || 0}deg)`;
+
+                const overlay = document.createElement("div");
+                overlay.className = "overlay";
+
+                const btnRotate = document.createElement("button");
+                btnRotate.type = "button";
+                btnRotate.className = "btn-round";
+                btnRotate.title = "Rodar 90º";
+                btnRotate.innerHTML = "⟲";
+                btnRotate.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    it.rotation = ((it.rotation || 0) + 90) % 360;
+                    img.style.transform = `rotate(${it.rotation}deg)`;
+                });
+
+                const btnDelete = document.createElement("button");
+                btnDelete.type = "button";
+                btnDelete.className = "btn-round";
+                btnDelete.title = "Eliminar";
+                btnDelete.innerHTML = "🗑️";
+                btnDelete.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    items = items.filter(x => x.id !== it.id);
+                    try { if (it.kind === "new") URL.revokeObjectURL(it.url); } catch { }
+                    render();
+                });
+
+                overlay.appendChild(btnRotate);
+                overlay.appendChild(btnDelete);
+
+                slot.appendChild(img);
+                slot.appendChild(overlay);
+            }
+
+            function markAddTile(slot) {
+                slot.classList.add("add-tile");
+                const t = document.createElement("div");
+                t.className = "add-text";
+                t.textContent = "Adicionar imagem";
+                const line = document.createElement("div");
+                line.className = "add-line";
+                slot.appendChild(t);
+                slot.appendChild(line);
+            }
+
+            function render() {
+                for (const s of slots) clearSlot(s);
+
+                const slice = items.slice(0, MAX);
+                slice.forEach((it, idx) => fillSlot(slots[idx], it));
+
+                if (slice.length > 0) setPrincipalBadge(slots[0]);
+
+                const nextIdx = slice.length;
+                if (nextIdx < MAX) {
+                    slots[nextIdx].classList.add("empty");
+                    markAddTile(slots[nextIdx]);
+                }
+
+                for (let i = nextIdx + 1; i < MAX; i++) {
+                    slots[i].classList.add("empty");
+                }
+
+                syncFilesAndOrder();
+            }
+
+            function addNewFiles(fileArray) {
+                const arr = Array.from(fileArray || []);
+                for (const f of arr) {
+                    if (!f || f.size === 0) continue;
+                    if (!f.type.startsWith("image/")) continue;
+                    if (items.length >= MAX) break;
+
+                    if (items.some(it => it.kind === "new" && sameFile(it.file, f))) continue;
+
+                    items.push({
+                        id: (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`),
+                        kind: "new",
+                        file: f,
+                        url: URL.createObjectURL(f),
+                        rotation: 0
+                    });
+                }
+                render();
+            }
+
+            function addExisting(list) {
+                for (const img of (list || [])) {
+                    if (items.length >= MAX) break;
+                    items.push({
+                        id: "db_" + img.id,
+                        kind: "db",
+                        dbId: img.id,
+                        file: null,
+                        url: img.url,
+                        rotation: img.rotation || 0
+                    });
+                }
+                render();
+            }
+
+            grid.addEventListener("click", (e) => {
+                const slot = e.target.closest(".img-slot");
+                if (!slot) return;
+                if (slot.classList.contains("filled")) return;
+                input.click();
             });
 
-            const btnDelete = document.createElement("button");
-            btnDelete.type = "button";
-            btnDelete.className = "btn-round";
-            btnDelete.title = "Eliminar";
-            btnDelete.innerHTML = "🗑️";
-            btnDelete.addEventListener("click", (e) => {
-              e.stopPropagation();
-              items = items.filter(x => x.id !== it.id);
-              try { if (it.kind === "new") URL.revokeObjectURL(it.url); } catch {}
-              render();
+            input.addEventListener("change", () => {
+                const picked = input.files ? Array.from(input.files) : [];
+                input.value = "";
+                if (picked.length) addNewFiles(picked);
             });
 
-            overlay.appendChild(btnRotate);
-            overlay.appendChild(btnDelete);
+            ["dragenter", "dragover"].forEach(evt =>
+                grid.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); })
+            );
+            grid.addEventListener("drop", (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (e.dataTransfer && e.dataTransfer.files) addNewFiles(e.dataTransfer.files);
+            });
 
-            slot.appendChild(img);
-            slot.appendChild(overlay);
-          }
+            new Sortable(grid, {
+                animation: 150,
+                draggable: ".img-slot.filled",
+                filter: ".img-slot:not(.filled)",
+                ghostClass: "sortable-ghost",
+                chosenClass: "sortable-chosen",
+                forceFallback: true,
+                fallbackOnBody: true,
+                onEnd: function () {
+                    const ordered = [];
+                    for (const s of slots) {
+                        if (!s.classList.contains("filled")) continue;
+                        const id = s.dataset.itemId;
+                        const it = items.find(x => x.id === id);
+                        if (it) ordered.push(it);
+                    }
+                    items = ordered;
+                    render();
+                }
+            });
 
-          function markAddTile(slot){
-            slot.classList.add("add-tile");
-            const t = document.createElement("div");
-            t.className = "add-text";
-            t.textContent = "Adicionar imagem";
-            const line = document.createElement("div");
-            line.className = "add-line";
-            slot.appendChild(t);
-            slot.appendChild(line);
-          }
+            const form = document.getElementById("formCriarAnuncio");
+            if (form) form.addEventListener("submit", () => syncFilesAndOrder());
 
-          function render(){
-            for(const s of slots) clearSlot(s);
-
-            const slice = items.slice(0, MAX);
-            slice.forEach((it, idx) => fillSlot(slots[idx], it));
-
-            if(slice.length > 0) setPrincipalBadge(slots[0]);
-
-            const nextIdx = slice.length;
-            if(nextIdx < MAX){
-              slots[nextIdx].classList.add("empty");
-              markAddTile(slots[nextIdx]);
+            if (typeof editData !== "undefined" && editData && editData.imagens) {
+                addExisting(editData.imagens);
+            } else {
+                render();
             }
-
-            for(let i = nextIdx + 1; i < MAX; i++){
-              slots[i].classList.add("empty");
-            }
-
-            syncFilesAndOrder();
-          }
-
-          function addNewFiles(fileArray){
-            const arr = Array.from(fileArray || []);
-            for(const f of arr){
-              if(!f || f.size===0) continue;
-              if(!f.type.startsWith("image/")) continue;
-              if(items.length >= MAX) break;
-
-              if(items.some(it => it.kind==="new" && sameFile(it.file, f))) continue;
-
-              items.push({
-                id: (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`),
-                kind: "new",
-                file: f,
-                url: URL.createObjectURL(f),
-                rotation: 0
-              });
-            }
-            render();
-          }
-
-          function addExisting(list){
-            for(const img of (list || [])){
-              if(items.length >= MAX) break;
-              items.push({
-                id: "db_" + img.id,
-                kind: "db",
-                dbId: img.id,
-                file: null,
-                url: img.url,
-                rotation: img.rotation || 0
-              });
-            }
-            render();
-          }
-
-          grid.addEventListener("click", (e) => {
-            const slot = e.target.closest(".img-slot");
-            if(!slot) return;
-            if(slot.classList.contains("filled")) return;
-            input.click();
-          });
-
-          input.addEventListener("change", () => {
-            const picked = input.files ? Array.from(input.files) : [];
-            input.value = "";
-            if(picked.length) addNewFiles(picked);
-          });
-
-          ["dragenter","dragover"].forEach(evt =>
-            grid.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); })
-          );
-          grid.addEventListener("drop", (e)=>{
-            e.preventDefault(); e.stopPropagation();
-            if(e.dataTransfer && e.dataTransfer.files) addNewFiles(e.dataTransfer.files);
-          });
-
-          new Sortable(grid, {
-            animation: 150,
-            draggable: ".img-slot.filled",
-            filter: ".img-slot:not(.filled)",
-            ghostClass: "sortable-ghost",
-            chosenClass: "sortable-chosen",
-            forceFallback: true,
-            fallbackOnBody: true,
-            onEnd: function () {
-              const ordered = [];
-              for(const s of slots){
-                if(!s.classList.contains("filled")) continue;
-                const id = s.dataset.itemId;
-                const it = items.find(x => x.id === id);
-                if(it) ordered.push(it);
-              }
-              items = ordered;
-              render();
-            }
-          });
-
-          const form = document.getElementById("formCriarAnuncio");
-          if(form) form.addEventListener("submit", () => syncFilesAndOrder());
-
-          if (typeof editData !== "undefined" && editData && editData.imagens) {
-            addExisting(editData.imagens);
-          } else {
-            render();
-          }
         })();
     </script>
 
@@ -774,21 +990,18 @@
                 });
             };
 
-            // ✅ Ao clicar "Publicar" → activa validação
             if (btnPublicar) {
                 btnPublicar.addEventListener("click", () => {
                     setPublishRequired(true);
                 });
             }
 
-            // ✅ Ao clicar "Rascunho" → desativa validação
             if (btnRascunho) {
                 btnRascunho.addEventListener("click", () => {
                     setPublishRequired(false);
                 });
             }
 
-            // ✅ Default ao carregar: modo rascunho (sem required nos opcionais)
             setPublishRequired(false);
         })();
     </script>
