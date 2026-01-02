@@ -24,12 +24,13 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 //Para verificar se as reservas expiraram
 builder.Services.AddScoped<AutoMarket.Services.ExpireReservasFilter>();
 
-// Identity
+// ✅ Identity — ATIVA CONFIRMAÇÃO DE CONTA
 builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
 })
-.AddEntityFrameworkStores<ApplicationDbContext>();
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders(); // ✅ Necessário para gerar tokens de confirmação/reset
 
 builder.Services.AddControllersWithViews();
 
@@ -41,11 +42,14 @@ builder.Services.Configure<GmailSmtpOptions>(
     builder.Configuration.GetSection("GmailSmtp")
 );
 
-// ✅ Serviço de envio de email
-builder.Services.AddSingleton<IEmailSender, GmailEmailSender>();
+// ✅ (1) Sender do TEU dispatcher de notificações (market)
+builder.Services.AddSingleton<AutoMarket.Services.Email.IEmailSender, GmailEmailSender>();
 
+// ✅ (2) Sender do Identity (usa o adaptador para reutilizar o GmailEmailSender)
+builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, IdentityEmailSenderAdapter>();
+
+// ✅ (3) Hosted service para enviar notificações pendentes
 builder.Services.AddHostedService<NotificacoesEmailDispatcherHostedService>();
-
 
 var app = builder.Build();
 
