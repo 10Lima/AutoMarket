@@ -1,77 +1,90 @@
 ﻿@model IEnumerable<AutoMarket.Models.Market.Marca>
 
 @{
-    var canFav = (bool)(ViewBag.CanFav ?? false);        // autenticado + comprador
-    var isAuth = (bool)(ViewBag.IsAuth ?? false);        // autenticado?
+    var canFav = (bool)(ViewBag.CanFav ?? false);
+    var isAuth = (bool)(ViewBag.IsAuth ?? false);
     var favSet = (HashSet<int>)(ViewBag.FavSet ?? new HashSet<int>());
     var countByMarca = (Dictionary<int, int>)(ViewBag.CountByMarca ?? new Dictionary<int, int>());
-
-    // ✅ Capturar URL atual para returnUrl
     var returnUrl = Context.Request.Path + Context.Request.QueryString;
 }
 
 <div class="row g-4">
-@foreach (var m in Model)
-{
-    var isFav = favSet.Contains(m.id_marca);
-    var total = countByMarca.TryGetValue(m.id_marca, out var t) ? t : 0;
+    @foreach (var m in Model)
+    {
+        var isFav = favSet.Contains(m.id_marca);
+        var total = countByMarca.TryGetValue(m.id_marca, out var t) ? t : 0;
 
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h5 class="card-title mb-0">@m.nome</h5>
+        <div class="col-md-6 col-lg-4">
+            <div class="marca-card h-100">
+                <div class="marca-card-body">
 
-                    @* ========================================
-                       ✅ 1) NÃO AUTENTICADO: Link para Login
-                       ======================================== *@
-                    @if (!isAuth)
-                    {
-                        <a class="btn btn-link p-0 text-decoration-none"
-                           asp-area="Identity"
-                           asp-page="/Account/Login"
-                           asp-route-returnUrl="@returnUrl"
-                           title="Inicia sessão para favoritar">
-                            <i class="bi bi-heart text-muted" style="font-size: 1.4rem;"></i>
-                        </a>
-                    }
-                    @* ========================================
-                       ✅ 2) AUTENTICADO + COMPRADOR: AJAX Toggle
-                       ======================================== *@
-                    else if (canFav)
-                    {
-                        <form asp-controller="Marcas" asp-action="ToggleFavorito" method="post"
-                              data-ajax="true"
-                              data-ajax-method="POST"
-                              data-ajax-success="onFavSuccess"
-                              data-ajax-failure="onFavFail">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="idMarca" value="@m.id_marca" />
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="marca-title">@m.nome</h5>
 
-                            <button type="submit" class="btn btn-link p-0 text-decoration-none" title="Favoritar">
-                                <i id="favIcon-@m.id_marca"
-                                   class="bi @(isFav ? "bi-heart-fill text-danger" : "bi-heart text-muted")"
-                                   style="font-size: 1.4rem;"></i>
+                        @if (!isAuth)
+                        {
+                            <a asp-area="Identity"
+                               asp-page="/Account/Login"
+                               asp-route-returnUrl="@returnUrl"
+                               class="btn btn-link p-0">
+                                <i class="bi bi-heart text-muted fs-5"></i>
+                            </a>
+                        }
+                        else if (canFav)
+                        {
+                            <form asp-controller="Marcas"
+                                  asp-action="ToggleFavorito"
+                                  method="post"
+                                  data-ajax="true"
+                                  data-ajax-method="POST"
+                                  data-ajax-success="onFavSuccess"
+                                  data-ajax-failure="onFavFail">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="idMarca" value="@m.id_marca" />
+                                <button type="submit" class="btn btn-link p-0">
+                                    <i id="favIcon-@m.id_marca"
+                                       class="bi @(isFav ? "bi-heart-fill text-danger" : "bi-heart text-muted") fs-5"></i>
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <button class="btn btn-link p-0" disabled>
+                                <i class="bi bi-heart text-muted fs-5"></i>
                             </button>
-                        </form>
-                    }
-                    @* ========================================
-                       ✅ 3) AUTENTICADO + NÃO COMPRADOR: Desativado
-                       ======================================== *@
-                    else
-                    {
-                        <button type="button" class="btn btn-link p-0 text-decoration-none" disabled
-                                title="Só compradores podem favoritar">
-                            <i class="bi bi-heart text-muted" style="font-size: 1.4rem;"></i>
-                        </button>
-                    }
-                </div>
+                        }
+                    </div>
 
-                <p class="text-muted mb-0">
-                    <i class="bi bi-car-front"></i> @total anúncio@(total != 1 ? "s" : "")
-                </p>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-car-front"></i>
+                        @total anúncio@(total != 1 ? "s" : "")
+                    </p>
+                </div>
             </div>
         </div>
-    </div>
-}
+    }
 </div>
+
+<style>
+    .marca-card {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,.06);
+        box-shadow: 0 8px 22px rgba(0,0,0,.05);
+        transition: transform .12s ease, box-shadow .12s ease;
+    }
+
+        .marca-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(0,0,0,.08);
+        }
+
+    .marca-card-body {
+        padding: 20px;
+    }
+
+    .marca-title {
+        font-weight: 650;
+        color: #111;
+    }
+</style>
