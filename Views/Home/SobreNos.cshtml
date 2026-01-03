@@ -1,0 +1,244 @@
+﻿@using System
+@using System.Collections.Generic
+@using System.Linq
+@using AutoMarket.Models.Market
+@using AutoMarket.Services
+@inject CurrentUserService CurrentUser
+@model Informacoes_Market
+
+@{
+    ViewData["Title"] = "Sobre Nós";
+
+    var contactos = ViewBag.Contactos as List<Market_Contacto> ?? new();
+    var horarios = ViewBag.Horarios as List<Market_Horario_Suporte> ?? new();
+    var excecoes = ViewBag.Excecoes as List<Market_Horario_Suporte_Excecao> ?? new();
+
+    // ✅ Calcular se é admin (funciona porque Razor views suportam await)
+    var isAdmin = await CurrentUser.IsAdminAsync(User);
+
+    string DiaSemana(int d) => d switch
+    {
+        1 => "Segunda-feira",
+        2 => "Terça-feira",
+        3 => "Quarta-feira",
+        4 => "Quinta-feira",
+        5 => "Sexta-feira",
+        6 => "Sábado",
+        7 => "Domingo",
+        _ => "—"
+    };
+
+    string Hora(object? t)
+    {
+        if (t == null) return "";
+        return t switch
+        {
+            TimeOnly to => to.ToString("HH:mm"),
+            TimeSpan ts => ts.ToString(@"hh\:mm"),
+            _ => t.ToString() ?? ""
+        };
+    }
+
+    string LinkContacto(string tipo, string valor)
+    {
+        tipo = (tipo ?? "").Trim().ToLowerInvariant();
+
+        return tipo switch
+        {
+            "email" => "mailto:" + valor,
+            "telefone" => "tel:" + valor.Replace(" ", ""),
+            "whatsapp" => "https://wa.me/" + new string(valor.Where(char.IsDigit).ToArray()),
+            "url" => valor,
+            _ => ""
+        };
+    }
+}
+
+<div class="container py-4">
+    <!-- ✅ HEADER COM BOTÃO "EDITAR" (SÓ ADMIN) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">@Model.nome</h2>
+            @if (!string.IsNullOrWhiteSpace(Model.URL))
+            {
+                <div class="text-muted">
+                    <a href="@Model.URL" target="_blank" rel="noopener">@Model.URL</a>
+                </div>
+            }
+        </div>
+
+        @if (isAdmin)
+        {
+            <div class="d-flex align-items-start">
+                <a class="btn btn-outline-primary"
+                   asp-controller="AdminSobreNos"
+                   asp-action="Index">
+                    <i class="bi bi-pencil-square me-1"></i> Editar
+                </a>
+            </div>
+        }
+    </div>
+
+    <div class="row g-4">
+        <!-- Contactos -->
+        <div class="col-12 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <strong>Contactos</strong>
+                </div>
+                <div class="card-body">
+                    @if (contactos.Count == 0)
+                    {
+                        <div class="text-muted">Sem contactos configurados.</div>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var c in contactos)
+                            {
+                                var href = LinkContacto(c.tipo, c.valor);
+                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">@c.tipo</div>
+                                        @if (!string.IsNullOrWhiteSpace(href))
+                                        {
+                                            <a href="@href" target="_blank" rel="noopener">@c.valor</a>
+                                        }
+                                        else
+                                        {
+                                            <span>@c.valor</span>
+                                        }
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Horário -->
+        <div class="col-12 col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <strong>Horário de Suporte</strong>
+                </div>
+                <div class="card-body">
+                    @if (horarios.Count == 0)
+                    {
+                        <div class="text-muted">Sem horário configurado.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Dia</th>
+                                        <th>Estado</th>
+                                        <th>Abre</th>
+                                        <th>Fecha</th>
+                                        <th>Timezone</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var h in horarios)
+                                    {
+                                        <tr>
+                                            <td>@DiaSemana(h.weekday)</td>
+                                            <td>
+                                                @if (h.fechado)
+                                                {
+                                                    <span class="badge bg-secondary">Fechado</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-success">Aberto</span>
+                                                }
+                                            </td>
+                                            <td>@(h.fechado ? "—" : Hora(h.abre))</td>
+                                            <td>@(h.fechado ? "—" : Hora(h.fecha))</td>
+                                            <td>@(string.IsNullOrWhiteSpace(h.timezone) ? "—" : h.timezone)</td>
+                                        </tr>
+                                        @if (!string.IsNullOrWhiteSpace(h.observacoes))
+                                        {
+                                            <tr class="table-light">
+                                                <td colspan="5" class="small text-muted">
+                                                    @h.observacoes
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <hr class="my-3" />
+
+                    <strong>Exceções</strong>
+                    @if (excecoes.Count == 0)
+                    {
+                        <div class="text-muted mt-2">Sem exceções configuradas.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive mt-2">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Estado</th>
+                                        <th>Abre</th>
+                                        <th>Fecha</th>
+                                        <th>Motivo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var e in excecoes)
+                                    {
+                                        <tr>
+                                            <td>@e.data.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                @if (e.fechado)
+                                                {
+                                                    <span class="badge bg-secondary">Fechado</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning text-dark">Horário reduzido</span>
+                                                }
+                                            </td>
+                                            <td>@(e.fechado ? "—" : Hora(e.abre))</td>
+                                            <td>@(e.fechado ? "—" : Hora(e.fecha))</td>
+                                            <td>@(string.IsNullOrWhiteSpace(e.motivo) ? "—" : e.motivo)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Termos e Políticas -->
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <strong>Termos e Políticas</strong>
+                </div>
+                <div class="card-body">
+                    @if (string.IsNullOrWhiteSpace(Model.termos_e_politicas))
+                    {
+                        <div class="text-muted">Sem termos configurados.</div>
+                    }
+                    else
+                    {
+                        <div style="white-space: pre-wrap;">@Model.termos_e_politicas</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,110 @@
+﻿@using AutoMarket.Models.Market
+@model IEnumerable<Market_Horario_Suporte_Excecao>
+
+@{
+    var idMarket = (int)(ViewBag.IdMarket ?? 0);
+    string HHmm(TimeOnly? t) => t.HasValue ? t.Value.ToString("HH:mm") : "";
+}
+
+@if (!Model.Any())
+{
+    <div class="text-muted">Sem exceções.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Fechado</th>
+                    <th>Abre</th>
+                    <th>Fecha</th>
+                    <th>Motivo</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model)
+                {
+                    var formId = $"saveExcecao_{e.id_excecao_suporte}";
+
+                    <tr>
+                        <td style="width:160px;">
+                            <input type="date"
+                                   class="form-control form-control-sm"
+                                   name="data"
+                                   value="@e.data.ToString("yyyy-MM-dd")"
+                                   required
+                                   form="@formId" />
+                        </td>
+
+                        <td style="width:110px;">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="fechado"
+                                   value="true"
+                                   @(e.fechado ? "checked" : "")
+                                   form="@formId" />
+                        </td>
+
+                        <td style="width:120px;">
+                            <input type="time"
+                                   class="form-control form-control-sm"
+                                   name="abre"
+                                   value="@HHmm(e.abre)"
+                                   form="@formId" />
+                        </td>
+
+                        <td style="width:120px;">
+                            <input type="time"
+                                   class="form-control form-control-sm"
+                                   name="fecha"
+                                   value="@HHmm(e.fecha)"
+                                   form="@formId" />
+                        </td>
+
+                        <td>
+                            <input class="form-control form-control-sm"
+                                   name="motivo"
+                                   value="@e.motivo"
+                                   maxlength="200"
+                                   form="@formId" />
+                        </td>
+
+                        <td class="text-end" style="width:260px;">
+                            <!-- Form de guardar -->
+                            <form id="@formId"
+                                  asp-action="SaveExcecao"
+                                  method="post"
+                                  data-ajax="true"
+                                  data-ajax-method="POST"
+                                  data-ajax-mode="replace"
+                                  data-ajax-update="#excecoesContainer"
+                                  class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id_market" value="@idMarket" />
+                                <input type="hidden" name="id_excecao_suporte" value="@e.id_excecao_suporte" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Guardar</button>
+                            </form>
+
+                            <!-- Form de remover -->
+                            <form asp-action="DeleteExcecao"
+                                  method="post"
+                                  data-ajax="true"
+                                  data-ajax-method="POST"
+                                  data-ajax-mode="replace"
+                                  data-ajax-update="#excecoesContainer"
+                                  class="d-inline ms-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id_market" value="@idMarket" />
+                                <input type="hidden" name="id_excecao_suporte" value="@e.id_excecao_suporte" />
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Remover</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

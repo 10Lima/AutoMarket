@@ -1,35 +1,86 @@
 ﻿@page
-@model IndexModel
+@model AutoMarket.Areas.Identity.Pages.Account.Manage.IndexModel
 @{
-    ViewData["Title"] = "Profile";
+    ViewData["Title"] = "Perfil AutoMarket";
     ViewData["ActivePage"] = ManageNavPages.Index;
 }
 
 <div class="manage-page-head mb-3">
     <h2 class="manage-page-title mb-1">@ViewData["Title"]</h2>
-    <p class="manage-page-subtitle mb-0">Atualiza o teu número de telefone e revê os teus dados.</p>
+    <p class="manage-page-subtitle mb-0">Atualiza os teus dados do marketplace.</p>
 </div>
 
 <partial name="_StatusMessage" for="StatusMessage" />
 
-<form id="profile-form" method="post" class="mt-3">
+<form method="post" class="mt-3 manage-form">
     <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
 
+    <h4 class="mb-3">Conta</h4>
+
     <div class="form-floating mb-3">
-        <input asp-for="Username" class="form-control" placeholder="Please choose your username." disabled />
-        <label asp-for="Username" class="form-label"></label>
+        <input asp-for="Input.Username" class="form-control" />
+        <label asp-for="Input.Username"></label>
+        <span asp-validation-for="Input.Username" class="text-danger"></span>
+    </div>
+
+    <h4 class="mt-4 mb-3">Dados do perfil</h4>
+
+    <div class="form-floating mb-3">
+        <input asp-for="Input.Nome" class="form-control" />
+        <label asp-for="Input.Nome"></label>
+        <span asp-validation-for="Input.Nome" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.CanalNotificacaoPreferido" class="form-label"></label>
+        <select asp-for="Input.CanalNotificacaoPreferido" class="form-select">
+            <option value="email">email</option>
+            <option value="sms">sms</option>
+        </select>
+        <span asp-validation-for="Input.CanalNotificacaoPreferido" class="text-danger"></span>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="Input.NotificarNovidades" class="form-check-input" />
+        <label asp-for="Input.NotificarNovidades" class="form-check-label"></label>
+        <span asp-validation-for="Input.NotificarNovidades" class="text-danger"></span>
+    </div>
+
+    <h4 class="mt-4 mb-3">Morada</h4>
+
+    <div class="form-floating mb-3">
+        <input asp-for="Input.Endereco" class="form-control" />
+        <label asp-for="Input.Endereco"></label>
+        <span asp-validation-for="Input.Endereco" class="text-danger"></span>
     </div>
 
     <div class="form-floating mb-3">
-        <input asp-for="Input.PhoneNumber" class="form-control" placeholder="Please enter your phone number." />
-        <label asp-for="Input.PhoneNumber" class="form-label"></label>
-        <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
+        <input asp-for="Input.Numero" class="form-control" />
+        <label asp-for="Input.Numero"></label>
+        <span asp-validation-for="Input.Numero" class="text-danger"></span>
     </div>
 
-    <!-- mantém o id e o post igual -->
-    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg btn-primary">
-        Save
-    </button>
+    <div class="form-floating mb-3">
+        <input asp-for="Input.CodigoPostal" class="form-control" placeholder="1234-567" />
+        <label asp-for="Input.CodigoPostal"></label>
+        <span asp-validation-for="Input.CodigoPostal" class="text-danger"></span>
+    </div>
+
+    <h4 class="mt-4 mb-3">Contactos</h4>
+
+    <div class="form-floating mb-3">
+        <input asp-for="Input.Contacto1Valor" class="form-control" />
+        <label asp-for="Input.Contacto1Valor"></label>
+        <span asp-validation-for="Input.Contacto1Valor" class="text-danger"></span>
+    </div>
+
+    <div class="form-floating mb-4">
+        <input asp-for="Input.Contacto2Valor" class="form-control" />
+        <label asp-for="Input.Contacto2Valor"></label>
+        <span asp-validation-for="Input.Contacto2Valor" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="w-100 btn btn-lg btn-primary">Guardar</button>
 </form>
 
 @section Scripts {
@@ -37,7 +88,6 @@
 }
 
 <style>
-    /* Só estilos locais do conteúdo (sem wrappers) */
     .manage-page-title {
         font-weight: 750;
         color: #111;
@@ -49,4 +99,14 @@
         color: #555;
         line-height: 1.55;
     }
+
+    .manage-form .form-control, .manage-form .form-select {
+        border-radius: 10px;
+        border: 1px solid #d0d0d0;
+    }
+
+        .manage-form .form-control:focus, .manage-form .form-select:focus {
+            border-color: #000;
+            box-shadow: 0 0 0 .15rem rgba(0,0,0,.12);
+        }
 </style>

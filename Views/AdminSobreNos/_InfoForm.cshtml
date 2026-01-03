@@ -1,0 +1,33 @@
+﻿@using AutoMarket.Models.Market
+@model Informacoes_Market
+
+<form asp-action="UpdateInfo"
+      method="post"
+      data-ajax="true"
+      data-ajax-method="POST"
+      data-ajax-mode="replace"
+      data-ajax-update="#infoContainer">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id_market" value="@Model.id_market" />
+
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <label class="form-label">Nome</label>
+            <input class="form-control" name="nome" value="@Model.nome" maxlength="120" required />
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label class="form-label">URL</label>
+            <input class="form-control" name="URL" value="@Model.URL" maxlength="255" required />
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">Termos e Políticas</label>
+            <textarea class="form-control" name="termos_e_politicas" rows="10" required>@Model.termos_e_politicas</textarea>
+        </div>
+
+        <div class="col-12 d-flex gap-2 justify-content-end">
+            <button class="btn btn-primary" type="submit">Guardar</button>
+        </div>
+    </div>
+</form>

@@ -1,0 +1,136 @@
+﻿@using AutoMarket.Models.Market
+@model Informacoes_Market
+
+@{
+    ViewData["Title"] = "Admin — Sobre Nós";
+
+    var contactos = ViewBag.Contactos as List<Market_Contacto> ?? new();
+    var horarios = ViewBag.Horarios as List<Market_Horario_Suporte> ?? new();
+    var excecoes = ViewBag.Excecoes as List<Market_Horario_Suporte_Excecao> ?? new();
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Gerir “Sobre Nós”</h2>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="SobreNos" target="_blank">
+            Ver página pública
+        </a>
+    </div>
+
+    <!-- INFO -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white"><strong>Informações do Marketplace</strong></div>
+        <div class="card-body" id="infoContainer">
+            @await Html.PartialAsync("_InfoForm", Model)
+        </div>
+    </div>
+
+    <!-- CONTACTOS -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white"><strong>Contactos</strong></div>
+        <div class="card-body">
+            <form asp-action="SaveContacto"
+                  method="post"
+                  data-ajax="true"
+                  data-ajax-method="POST"
+                  data-ajax-mode="replace"
+                  data-ajax-update="#contactosContainer"
+                  class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id_market" value="@Model.id_market" />
+                <input type="hidden" name="id_contacto" value="0" />
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label mb-1">Tipo</label>
+                    <input class="form-control" name="tipo" placeholder="email / telefone / whatsapp / morada / horario" required maxlength="30" />
+                </div>
+                <div class="col-12 col-md-7">
+                    <label class="form-label mb-1">Valor</label>
+                    <input class="form-control" name="valor" required maxlength="120" />
+                </div>
+                <div class="col-12 col-md-2 d-grid">
+                    <button class="btn btn-primary" type="submit">Adicionar</button>
+                </div>
+            </form>
+
+            <hr class="my-3" />
+
+            <div id="contactosContainer">
+                @{
+                    ViewBag.IdMarket = Model.id_market;
+                }
+                @await Html.PartialAsync("_ContactosTable", contactos)
+            </div>
+        </div>
+    </div>
+
+    <!-- HORÁRIO -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white"><strong>Horário de Suporte</strong></div>
+        <div class="card-body">
+            <div id="horarioContainer">
+                @{
+                    ViewBag.IdMarket = Model.id_market;
+                }
+                @await Html.PartialAsync("_HorarioTable", horarios)
+            </div>
+        </div>
+    </div>
+
+    <!-- EXCEÇÕES -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white"><strong>Exceções</strong></div>
+        <div class="card-body">
+            <form asp-action="SaveExcecao"
+                  method="post"
+                  data-ajax="true"
+                  data-ajax-method="POST"
+                  data-ajax-mode="replace"
+                  data-ajax-update="#excecoesContainer"
+                  class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id_market" value="@Model.id_market" />
+                <input type="hidden" name="id_excecao_suporte" value="0" />
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label mb-1">Data</label>
+                    <input type="date" class="form-control" name="data" required />
+                </div>
+
+                <div class="col-6 col-md-2">
+                    <label class="form-label mb-1">Abre</label>
+                    <input type="time" class="form-control" name="abre" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label mb-1">Fecha</label>
+                    <input type="time" class="form-control" name="fecha" />
+                </div>
+
+                <div class="col-12 col-md-2">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" name="fechado" value="true" id="fechadoNew" />
+                        <label class="form-check-label" for="fechadoNew">Fechado</label>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label mb-1">Motivo</label>
+                    <input class="form-control" name="motivo" maxlength="200" />
+                </div>
+
+                <div class="col-12 d-grid">
+                    <button class="btn btn-primary" type="submit">Adicionar exceção</button>
+                </div>
+            </form>
+
+            <hr class="my-3" />
+
+            <div id="excecoesContainer">
+                @{
+                    ViewBag.IdMarket = Model.id_market;
+                }
+                @await Html.PartialAsync("_ExcecoesTable", excecoes)
+            </div>
+        </div>
+    </div>
+</div>
