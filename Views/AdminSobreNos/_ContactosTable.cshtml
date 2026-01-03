@@ -1,0 +1,82 @@
+﻿@using AutoMarket.Models.Market
+@model IEnumerable<Market_Contacto>
+
+@{
+    var idMarket = (int)(ViewBag.IdMarket ?? 0);
+}
+
+@if (!Model.Any())
+{
+    <div class="text-muted">Sem contactos.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model)
+                {
+                    var formId = $"saveContacto_{c.id_contacto}";
+
+                    <tr>
+                        <td style="width:220px;">
+                            <input class="form-control form-control-sm"
+                                   name="tipo"
+                                   value="@c.tipo"
+                                   maxlength="30"
+                                   required
+                                   form="@formId" />
+                        </td>
+
+                        <td>
+                            <input class="form-control form-control-sm"
+                                   name="valor"
+                                   value="@c.valor"
+                                   maxlength="120"
+                                   required
+                                   form="@formId" />
+                        </td>
+
+                        <td class="text-end" style="width:260px;">
+                            <!-- Form de guardar (não atravessa TR) -->
+                            <form id="@formId"
+                                  asp-action="SaveContacto"
+                                  method="post"
+                                  data-ajax="true"
+                                  data-ajax-method="POST"
+                                  data-ajax-mode="replace"
+                                  data-ajax-update="#contactosContainer"
+                                  class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id_market" value="@idMarket" />
+                                <input type="hidden" name="id_contacto" value="@c.id_contacto" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Guardar</button>
+                            </form>
+
+                            <!-- Form de remover -->
+                            <form asp-action="DeleteContacto"
+                                  method="post"
+                                  data-ajax="true"
+                                  data-ajax-method="POST"
+                                  data-ajax-mode="replace"
+                                  data-ajax-update="#contactosContainer"
+                                  class="d-inline ms-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id_market" value="@idMarket" />
+                                <input type="hidden" name="id_contacto" value="@c.id_contacto" />
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Remover</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

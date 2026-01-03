@@ -1,0 +1,78 @@
+﻿@using AutoMarket.Models.Market
+@model IEnumerable<Market_Horario_Suporte>
+
+@{
+    var idMarket = (int)(ViewBag.IdMarket ?? 0);
+
+    string DiaSemana(int d) => d switch
+    {
+        1 => "Segunda",
+        2 => "Terça",
+        3 => "Quarta",
+        4 => "Quinta",
+        5 => "Sexta",
+        6 => "Sábado",
+        7 => "Domingo",
+        _ => "—"
+    };
+
+    string HHmm(TimeOnly? t) => t.HasValue ? t.Value.ToString("HH:mm") : "";
+    var byDay = Model.ToDictionary(x => (int)x.weekday, x => x);
+}
+
+<form asp-action="SaveHorario"
+      method="post"
+      data-ajax="true"
+      data-ajax-method="POST"
+      data-ajax-mode="replace"
+      data-ajax-update="#horarioContainer">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id_market" value="@idMarket" />
+
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Dia</th>
+                    <th>Fechado</th>
+                    <th>Abre</th>
+                    <th>Fecha</th>
+                    <th>Timezone</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int d = 1; d <= 7; d++)
+                {
+                    byDay.TryGetValue(d, out var row);
+                    var fechado = row?.fechado ?? false;
+                    var tz = row?.timezone ?? "Europe/Lisbon";
+                    var obs = row?.observacoes ?? "";
+
+                    <tr>
+                        <td class="fw-semibold">@DiaSemana(d)</td>
+                        <td>
+                            <input class="form-check-input" type="checkbox" name="fechado_@d" @(fechado ? "checked" : "") />
+                        </td>
+                        <td>
+                            <input type="time" class="form-control form-control-sm" name="abre_@d" value="@HHmm(row?.abre)" />
+                        </td>
+                        <td>
+                            <input type="time" class="form-control form-control-sm" name="fecha_@d" value="@HHmm(row?.fecha)" />
+                        </td>
+                        <td>
+                            <input class="form-control form-control-sm" name="timezone_@d" value="@tz" maxlength="64" />
+                        </td>
+                        <td>
+                            <input class="form-control form-control-sm" name="observacoes_@d" value="@obs" maxlength="200" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-end">
+        <button class="btn btn-primary" type="submit">Guardar horário</button>
+    </div>
+</form>
