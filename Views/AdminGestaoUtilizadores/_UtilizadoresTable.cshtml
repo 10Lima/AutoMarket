@@ -10,20 +10,20 @@
 
 @if (Model == null || Model.Count == 0)
 {
-    <div class="alert alert-info">Sem resultados.</div>
+    <div class="alert alert-info alert-soft">Sem resultados.</div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
+    <div class="table-responsive table-soft-wrap">
+        <table class="table table-hover align-middle table-soft mb-0">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Nome</th>
-                    <th>Estado</th>
-                    <th class="text-end">Ações</th>
+                    <th class="th-soft text-center">ID</th>
+                    <th class="th-soft text-center">Username</th>
+                    <th class="th-soft text-center">Email</th>
+                    <th class="th-soft text-center">Nome</th>
+                    <th class="th-soft text-center">Estado</th>
+                    <th class="th-soft text-center">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -39,68 +39,43 @@ else
                     var foiRemovidoAdmin = podeRecuperar.Contains(id);
 
                     <tr>
-                        <td>@id</td>
-                        <td>@(string.IsNullOrWhiteSpace(uname) ? $"#{id}" : uname)</td>
-                        <td>@em</td>
-                        <td>@u.nome</td>
-                        <td>
+                        <td class="td-soft text-center">@id</td>
+                        <td class="td-soft">@((string.IsNullOrWhiteSpace(uname)) ? $"#{id}" : uname)</td>
+                        <td class="td-soft">@em</td>
+                        <td class="td-soft">@u.nome</td>
+                        <td class="td-soft text-center">
                             @if (estado == "bloqueado")
                             {
-                                <span class="badge bg-danger">bloqueado</span>
+                                <span class="badge badge-bloqueado">bloqueado</span>
                             }
                             else
                             {
-                                <span class="badge bg-success">ativo</span>
+                                <span class="badge badge-ativo">ativo</span>
                             }
 
                             @if (isAdminAtual)
                             {
-                                <span class="badge bg-dark ms-1">admin</span>
+                                <span class="badge badge-admin ms-1">admin</span>
                             }
                         </td>
-
-                        <td class="text-end">
-                            @* ✅ ADMIN ATUAL: só remover_admin *@
+                        <td class="td-soft text-center">
                             @if (isAdminAtual)
                             {
-                                <button type="button"
-                                        class="btn btn-sm btn-warning btn-removeradmin"
-                                        data-id="@id">
-                                    Remover admin
-                                </button>
+                                <button class="btn btn-sm btn-warning btn-removeradmin" data-id="@id">Remover admin</button>
                             }
                             else
                             {
-                                @* ✅ NÃO ADMIN *@
-
-                                @* Se foi removido como admin e está bloqueado → só recuperar_admin *@
-                                @if (estado == "bloqueado" && foiRemovidoAdmin)
+                                if (estado == "bloqueado" && foiRemovidoAdmin)
                                 {
-                                    <button type="button"
-                                            class="btn btn-sm btn-success btn-recuperaradmin"
-                                            data-id="@id">
-                                        Recuperar admin
-                                    </button>
+                                    <button class="btn btn-sm btn-success btn-recuperaradmin" data-id="@id">Recuperar admin</button>
+                                }
+                                else if (estado == "ativo")
+                                {
+                                    <button class="btn btn-sm btn-danger btn-bloquear" data-id="@id">Bloquear</button>
                                 }
                                 else
                                 {
-                                    @* Utilizador normal → bloquear/desbloquear *@
-                                    @if (estado == "ativo")
-                                    {
-                                        <button type="button"
-                                                class="btn btn-sm btn-danger btn-bloquear"
-                                                data-id="@id">
-                                            Bloquear
-                                        </button>
-                                    }
-                                    else if (estado == "bloqueado")
-                                    {
-                                        <button type="button"
-                                                class="btn btn-sm btn-success btn-desbloquear"
-                                                data-id="@id">
-                                            Desbloquear
-                                        </button>
-                                    }
+                                    <button class="btn btn-sm btn-success btn-desbloquear" data-id="@id">Desbloquear</button>
                                 }
                             }
                         </td>
@@ -110,3 +85,49 @@ else
         </table>
     </div>
 }
+
+<style>
+    .alert-soft {
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .table-soft-wrap {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.06);
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+    }
+
+    .th-soft {
+        padding: 16px 26px;
+        font-weight: 700;
+        color: #111;
+    }
+
+    .td-soft {
+        padding: 16px 26px;
+        vertical-align: middle;
+    }
+
+    .badge {
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-weight: 600;
+    }
+
+    .badge-ativo {
+        background: #16a34a;
+        color: #fff;
+    }
+
+    .badge-bloqueado {
+        background: #dc2626;
+        color: #fff;
+    }
+
+    .badge-admin {
+        background: #111;
+        color: #fff;
+    }
+</style>

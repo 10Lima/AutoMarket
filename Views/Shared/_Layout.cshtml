@@ -12,11 +12,17 @@
     <link href="~/lib/jqueryui/themes/base/jquery-ui.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/AutoMarket.styles.css" asp-append-version="true" />
-    
+
     <!-- ✅ Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
 <body>
+    @{
+        // ✅ Detectar se o utilizador autenticado é admin (Razor suporta await)
+        var isAdmin = User?.Identity?.IsAuthenticated == true
+        ? await CurrentUser.IsAdminAsync(User)
+        : false;
+    }
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
@@ -33,9 +39,15 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Home" asp-action="SobreNos">Sobre Nós</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Vender" asp-action="Comecar">+ Começar a vender</a>
-                        </li>
+
+                        @* ✅ Só mostra "+ Começar a vender" se NÃO for admin *@
+                        @if (!isAdmin)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Vender" asp-action="Comecar">+ Começar a vender</a>
+                            </li>
+                        }
+
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="Anuncios" asp-action="Carros">
                                 <i class="bi bi-car-front"></i> Carros
@@ -55,7 +67,7 @@
             </div>
         </nav>
     </header>
-    
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
@@ -73,16 +85,16 @@
     <script src="~/lib/jquery-ajax/jquery.unobtrusive-ajax.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    
+
     <!-- ✅ Select2 JS (DEPOIS do jQuery) -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    
+
     <!-- ✅ SortableJS (para drag & drop de reordenar) -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-    
+
     <!-- ✅ Script do modal de admin -->
     <script src="~/js/admin-motivo-modal.js" asp-append-version="true"></script>
-    
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

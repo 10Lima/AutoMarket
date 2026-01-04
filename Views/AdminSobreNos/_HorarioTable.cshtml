@@ -30,14 +30,14 @@
     <input type="hidden" name="id_market" value="@idMarket" />
 
     <div class="table-responsive">
-        <table class="table align-middle">
-            <thead>
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
                 <tr>
-                    <th>Dia</th>
-                    <th>Fechado</th>
-                    <th>Abre</th>
-                    <th>Fecha</th>
-                    <th>Timezone</th>
+                    <th style="width:160px;">Dia</th>
+                    <th style="width:110px;">Fechado</th>
+                    <th style="width:120px;">Abre</th>
+                    <th style="width:120px;">Fecha</th>
+                    <th style="width:200px;">Timezone</th>
                     <th>Observações</th>
                 </tr>
             </thead>
@@ -51,18 +51,25 @@
 
                     <tr>
                         <td class="fw-semibold">@DiaSemana(d)</td>
+
                         <td>
-                            <input class="form-check-input" type="checkbox" name="fechado_@d" @(fechado ? "checked" : "") />
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="checkbox" name="fechado_@d" @(fechado ? "checked" : "") />
+                            </div>
                         </td>
+
                         <td>
                             <input type="time" class="form-control form-control-sm" name="abre_@d" value="@HHmm(row?.abre)" />
                         </td>
+
                         <td>
                             <input type="time" class="form-control form-control-sm" name="fecha_@d" value="@HHmm(row?.fecha)" />
                         </td>
+
                         <td>
                             <input class="form-control form-control-sm" name="timezone_@d" value="@tz" maxlength="64" />
                         </td>
+
                         <td>
                             <input class="form-control form-control-sm" name="observacoes_@d" value="@obs" maxlength="200" />
                         </td>
@@ -72,7 +79,7 @@
         </table>
     </div>
 
-    <div class="d-flex justify-content-end">
-        <button class="btn btn-primary" type="submit">Guardar horário</button>
+    <div class="d-flex justify-content-end mt-3">
+        <button class="btn btn-sm btn-dark" type="submit">Guardar horário</button>
     </div>
 </form>

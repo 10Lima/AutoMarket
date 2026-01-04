@@ -13,8 +13,8 @@
 else
 {
     <div class="table-responsive">
-        <table class="table align-middle">
-            <thead>
+        <table class="table table-sm align-middle">
+            <thead class="table-light">
                 <tr>
                     <th>Data</th>
                     <th>Fechado</th>
@@ -73,7 +73,6 @@ else
                         </td>
 
                         <td class="text-end" style="width:260px;">
-                            <!-- Form de guardar -->
                             <form id="@formId"
                                   asp-action="SaveExcecao"
                                   method="post"
@@ -85,10 +84,9 @@ else
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id_market" value="@idMarket" />
                                 <input type="hidden" name="id_excecao_suporte" value="@e.id_excecao_suporte" />
-                                <button class="btn btn-sm btn-outline-primary" type="submit">Guardar</button>
+                                <button class="btn btn-sm btn-outline-dark" type="submit">Guardar</button>
                             </form>
 
-                            <!-- Form de remover -->
                             <form asp-action="DeleteExcecao"
                                   method="post"
                                   data-ajax="true"

@@ -20,7 +20,6 @@
     var topVendedores = ViewBag.TopVendedores as List<KeyValuePair<string, int>> ?? new();
     var topMarcasFavoritas = ViewBag.TopMarcasFavoritas as List<KeyValuePair<string, int>> ?? new();
 
-
     var culturaPt = CultureInfo.GetCultureInfo("pt-PT");
 
     double? mediaVisitasAtivos = (double?)ViewBag.MediaVisitasPorAnuncioAtivos;
@@ -45,534 +44,697 @@
     var bloqueadosVendedores = (int)(ViewBag.BloqueadosVendedores ?? 0);
     var bloqueadosAdmins = (int)(ViewBag.BloqueadosAdmins ?? 0);
 
-
     int Get(IDictionary<string, int> d, string k) => d.TryGetValue(k, out var v) ? v : 0;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Estatísticas</h2>
+<div class="admin-page">
+    <div class="admin-card">
 
-    <form method="get" class="d-flex gap-2 align-items-end flex-wrap">
-        <div>
-            <label class="form-label mb-1">Período</label>
-            <select name="periodo" class="form-select">
-                <option value="1d" selected="@(periodo == "1d")">Último 1 dia</option>
-                <option value="7d" selected="@(periodo == "7d")">Últimos 7 dias</option>
-                <option value="30d" selected="@(periodo == "30d")">Últimos 30 dias</option>
-                <option value="3m" selected="@(periodo == "3m")">Últimos 3 meses</option>
-                <option value="6m" selected="@(periodo == "6m")">Últimos 6 meses</option>
-                <option value="12m" selected="@(periodo == "12m")">Últimos 12 meses</option>
-                <option value="all" selected="@(periodo == "all")">Desde sempre</option>
-                <option value="custom" selected="@(periodo == "custom")">Intervalo personalizado</option>
-            </select>
-        </div>
-
-        <div>
-            <label class="form-label mb-1">Data início</label>
-            <input type="date" name="dataInicio" class="form-control"
-                   value="@(customStart ?? "")"
-                   max="@today" />
-        </div>
-
-        <div>
-            <label class="form-label mb-1">Data fim</label>
-            <input type="date" name="dataFim" class="form-control"
-                   value="@(customEnd ?? "")"
-                   max="@today" />
-        </div>
-
-        <button class="btn btn-primary" type="submit">Aplicar</button>
-    </form>
-</div>
-
-@if (start.HasValue && end.HasValue)
-{
-    <div class="text-muted mb-3">
-        Período considerado:
-        <strong>@start.Value.ToString("dd/MM/yyyy")</strong>
-        até
-        <strong>@end.Value.ToString("dd/MM/yyyy")</strong> (UTC).
-    </div>
-}
-else if (start.HasValue)
-{
-    <div class="text-muted mb-3">
-        Período considerado: desde <strong>@start.Value.ToString("dd/MM/yyyy HH:mm")</strong> (UTC).
-    </div>
-}
-
-@if (!string.IsNullOrWhiteSpace(erroPeriodo))
-{
-    <div class="alert alert-warning mt-3 mb-0">
-        @erroPeriodo
-    </div>
-}
-
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Utilizadores</div>
-                <div class="fs-4 fw-bold">@ViewBag.TotalUtilizadores</div>
-                <div class="small text-muted">Total no sistema</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Bloqueados</div>
-                <div class="fs-4 fw-bold">@ViewBag.TotalBloqueados</div>
-                <div class="small text-muted">
-                    Admins: @bloqueadosAdmins · Vendedores: @bloqueadosVendedores · Compradores: @bloqueadosCompradores
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Admins</div>
-                <div class="fs-4 fw-bold">@ViewBag.TotalAdmins</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Compradores</div>
-                <div class="fs-4 fw-bold">@ViewBag.TotalCompradores</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Vendedores</div>
-                <div class="fs-4 fw-bold">@ViewBag.TotalVendedores</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Anúncios (por estado)</div>
-            <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        @foreach (var kv in anunciosPorEstado.OrderByDescending(x => x.Value))
-                        {
-                            <tr>
-                                <td>@kv.Key</td>
-                                <td class="text-end">@kv.Value</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-
-                <hr />
-
-                <div class="small text-muted">
-                    Preço médio (ativos): <strong>
-                        @(ViewBag.PrecoMedioAtivos == null
-                                                ? "—"
-                                                : string.Format(culturaPt, "{0:C}", (decimal)ViewBag.PrecoMedioAtivos))
-                    </strong>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Encomendas (por estado)</div>
-            <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        @foreach (var kv in encomendasPorEstado.OrderByDescending(x => x.Value))
-                        {
-                            <tr>
-                                <td>@kv.Key</td>
-                                <td class="text-end">@kv.Value</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-
-                <hr />
-                <div class="small text-muted">
-                    Vendas pagas no período: <strong>@ViewBag.TotalVendasPeriodo</strong>
-                </div>
-                <div class="small text-muted">
-                    Receita (aprox.) no período: <strong>@string.Format(culturaPt, "{0:C}", (decimal)ViewBag.ReceitaPeriodo)</strong>
-                </div>
-                <div class="small text-muted">
-                    Tempo médio até venda (dias): <strong>@(ViewBag.TempoMedioVendaDias == null ? "—" : ((double)ViewBag.TempoMedioVendaDias).ToString("0.0", culturaPt))</strong>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Reservas (por estado)</div>
-            <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        @foreach (var kv in reservasPorEstado.OrderByDescending(x => x.Value))
-                        {
-                            <tr>
-                                <td>@kv.Key</td>
-                                <td class="text-end">@kv.Value</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-                <div class="mt-2 small text-muted">
-                    Nota: o anúncio tem prazo de reserva default de 168h (7 dias) no esquema.:contentReference[oaicite:10]{index=10}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Vendas pagas por período</div>
-            <div class="card-body">
-                @if (vendasSerie.Count == 0)
+        <!-- HEADER + FILTROS -->
+        <div class="admin-head">
+            <div class="admin-title-wrap">
+                <h1 class="page-title mb-0">Estatísticas</h1>
+                @if (start.HasValue && end.HasValue)
                 {
-                    <div class="text-muted">Sem dados no período selecionado.</div>
+                    <div class="text-muted mt-2">
+                        Período considerado:
+                        <strong>@start.Value.ToString("dd/MM/yyyy")</strong>
+                        até
+                        <strong>@end.Value.ToString("dd/MM/yyyy")</strong> (UTC).
+                    </div>
                 }
-                else
+                else if (start.HasValue)
                 {
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th class="text-end">Vendas</th>
-                            </tr>
-                        </thead>
+                    <div class="text-muted mt-2">
+                        Período considerado: desde <strong>@start.Value.ToString("dd/MM/yyyy HH:mm")</strong> (UTC).
+                    </div>
+                }
+            </div>
+
+            <div class="admin-filters card card-soft">
+                <div class="card-body">
+                    <form method="get" class="filters-grid">
+                        <div>
+                            <label class="form-label mb-1">Período</label>
+                            <select name="periodo" class="form-select form-control-soft">
+                                <option value="1d" selected="@(periodo == "1d")">Último 1 dia</option>
+                                <option value="7d" selected="@(periodo == "7d")">Últimos 7 dias</option>
+                                <option value="30d" selected="@(periodo == "30d")">Últimos 30 dias</option>
+                                <option value="3m" selected="@(periodo == "3m")">Últimos 3 meses</option>
+                                <option value="6m" selected="@(periodo == "6m")">Últimos 6 meses</option>
+                                <option value="12m" selected="@(periodo == "12m")">Últimos 12 meses</option>
+                                <option value="all" selected="@(periodo == "all")">Desde sempre</option>
+                                <option value="custom" selected="@(periodo == "custom")">Intervalo personalizado</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="form-label mb-1">Data início</label>
+                            <input type="date"
+                                   name="dataInicio"
+                                   class="form-control form-control-soft"
+                                   value="@(customStart ?? "")"
+                                   max="@today" />
+                        </div>
+
+                        <div>
+                            <label class="form-label mb-1">Data fim</label>
+                            <input type="date"
+                                   name="dataFim"
+                                   class="form-control form-control-soft"
+                                   value="@(customEnd ?? "")"
+                                   max="@today" />
+                        </div>
+
+                        <div class="d-flex align-items-end">
+                            <button class="btn btn-dark-custom w-100" type="submit">Aplicar</button>
+                        </div>
+                    </form>
+
+                    @if (!string.IsNullOrWhiteSpace(erroPeriodo))
+                    {
+                        <div class="alert alert-warning mt-3 mb-0">
+                            @erroPeriodo
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI: 5 em cima -->
+        <div class="kpi-grid-5 mt-3">
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Utilizadores</div>
+                    <div class="kpi-value">@ViewBag.TotalUtilizadores</div>
+                    <div class="kpi-sub">Total no sistema</div>
+                </div>
+            </div>
+
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Bloqueados</div>
+                    <div class="kpi-value">@ViewBag.TotalBloqueados</div>
+                    <div class="kpi-sub">
+                        Admins: @bloqueadosAdmins · Vendedores: @bloqueadosVendedores · Compradores: @bloqueadosCompradores
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Admins</div>
+                    <div class="kpi-value">@ViewBag.TotalAdmins</div>
+                </div>
+            </div>
+
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Compradores</div>
+                    <div class="kpi-value">@ViewBag.TotalCompradores</div>
+                </div>
+            </div>
+
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Vendedores</div>
+                    <div class="kpi-value">@ViewBag.TotalVendedores</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI: 4 em baixo (Novos...) -->
+        <div class="kpi-grid-4 mt-3">
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Novos utilizadores</div>
+                    <div class="kpi-value">@novosUtilizadores</div>
+                    <div class="kpi-sub">No período selecionado</div>
+                </div>
+            </div>
+
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Novos compradores</div>
+                    <div class="kpi-value">@novosCompradores</div>
+                    <div class="kpi-sub">No período selecionado</div>
+                </div>
+            </div>
+
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Novos vendedores</div>
+                    <div class="kpi-value">@novosVendedores</div>
+                    <div class="kpi-sub">No período selecionado</div>
+                </div>
+            </div>
+
+            <div class="card card-soft kpi-card">
+                <div class="card-body">
+                    <div class="kpi-label">Novos admins</div>
+                    <div class="kpi-value">@novosAdmins</div>
+                    <div class="kpi-sub">No período selecionado</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3 cards alinhados -->
+        <div class="cards-3 mt-4">
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Anúncios (por estado)</div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0 table-soft">
                         <tbody>
-                            @foreach (var p in vendasSerie)
+                            @foreach (var kv in anunciosPorEstado.OrderByDescending(x => x.Value))
                             {
                                 <tr>
-                                    <td>@p.Key</td>
-                                    <td class="text-end">@p.Value</td>
+                                    <td>@kv.Key</td>
+                                    <td class="text-end">@kv.Value</td>
                                 </tr>
                             }
                         </tbody>
                     </table>
-                }
-            </div>
-        </div>
-    </div>
 
-    <div class="col-lg-3">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Top Marcas (vendas)</div>
-            <div class="card-body">
-                @if (topMarcas.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <ol class="mb-0">
-                        @foreach (var x in topMarcas)
-                        {
-                            <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
-                        }
-                    </ol>
-                }
-            </div>
-        </div>
-    </div>
+                    <hr class="soft-hr" />
 
-    <div class="col-lg-3">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Top Modelos (vendas)</div>
-            <div class="card-body">
-                @if (topModelos.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <ol class="mb-0">
-                        @foreach (var x in topModelos)
-                        {
-                            <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
-                        }
-                    </ol>
-                }
+                    <div class="small text-muted">
+                        Preço médio (ativos):
+                        <strong>
+                            @(ViewBag.PrecoMedioAtivos == null ? "—" : string.Format(culturaPt, "{0:C}", (decimal)ViewBag.PrecoMedioAtivos))
+                        </strong>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <div class="col-lg-3">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Top Marcas Favoritadas</div>
-            <div class="card-body">
-                @if (topMarcasFavoritas.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <ol class="mb-0">
-                        @foreach (var x in topMarcasFavoritas)
-                        {
-                            <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
-                        }
-                    </ol>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row g-3">
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Top Vendedores (vendas pagas no período)</div>
-            <div class="card-body">
-                @if (topVendedores.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Vendedor</th>
-                                <th class="text-end">Vendas</th>
-                            </tr>
-                        </thead>
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Encomendas (por estado)</div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0 table-soft">
                         <tbody>
-                            @foreach (var x in topVendedores)
+                            @foreach (var kv in encomendasPorEstado.OrderByDescending(x => x.Value))
                             {
                                 <tr>
-                                    <td>@x.Key</td>
-                                    <td class="text-end">@x.Value</td>
+                                    <td>@kv.Key</td>
+                                    <td class="text-end">@kv.Value</td>
                                 </tr>
                             }
                         </tbody>
                     </table>
-                }
+
+                    <hr class="soft-hr" />
+
+                    <div class="small text-muted">
+                        Vendas pagas no período: <strong>@ViewBag.TotalVendasPeriodo</strong>
+                    </div>
+                    <div class="small text-muted">
+                        Receita (aprox.) no período: <strong>@string.Format(culturaPt, "{0:C}", (decimal)ViewBag.ReceitaPeriodo)</strong>
+                    </div>
+                    <div class="small text-muted">
+                        Tempo médio até venda (dias): <strong>@(ViewBag.TempoMedioVendaDias == null ? "—" : ((double)ViewBag.TempoMedioVendaDias).ToString("0.0", culturaPt))</strong>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<div class="row g-3 mb-4">
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Visitas por anúncio (ativos)</div>
-            <div class="card-body">
-                <div class="text-muted small">Considera visitas "agendada" e "realizada".</div>
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Reservas (por estado)</div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0 table-soft">
+                        <tbody>
+                            @foreach (var kv in reservasPorEstado.OrderByDescending(x => x.Value))
+                            {
+                                <tr>
+                                    <td>@kv.Key</td>
+                                    <td class="text-end">@kv.Value</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
 
-                <div class="mt-2">
-                    <div class="text-muted">Média</div>
-                    <div class="fs-4 fw-bold">
-                        @(mediaVisitasAtivos == null ? "—" : mediaVisitasAtivos.Value.ToString("0.00", culturaPt))
+                    <div class="mt-2 small text-muted">
+                        Nota: o anúncio tem prazo de reserva default de 168h (7 dias) no esquema.
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="row g-3 mb-4">
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Top localizações (anúncios ativos)</div>
-            <div class="card-body">
-                @if (topLocalizacoesAnuncios.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <ol class="mb-0">
-                        @foreach (var x in topLocalizacoesAnuncios)
-                        {
-                            <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
-                        }
-                    </ol>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Top localizações (vendas pagas no período)</div>
-            <div class="card-body">
-                @if (topLocalizacoesVendas.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <ol class="mb-0">
-                        @foreach (var x in topLocalizacoesVendas)
-                        {
-                            <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
-                        }
-                    </ol>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
-<div class="row g-3 mb-4">
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Stock — Anos</div>
-            <div class="card-body">
-                <div class="small text-muted mb-2">Baseado em anúncios ativos.</div>
-
-                <div class="d-flex justify-content-between">
-                    <div class="text-muted">Min</div>
-                    <div class="fw-semibold">@(stockAnoMin?.ToString() ?? "—")</div>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <div class="text-muted">Max</div>
-                    <div class="fw-semibold">@(stockAnoMax?.ToString() ?? "—")</div>
-                </div>
-                <div class="d-flex justify-content-between mb-3">
-                    <div class="text-muted">Média</div>
-                    <div class="fw-semibold">@(stockAnoMedio == null ? "—" : stockAnoMedio.Value.ToString("0.0", culturaPt))</div>
-                </div>
-
-                <div class="fw-semibold mb-1">Top anos</div>
-                @if (stockTopAnos.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <ol class="mb-0">
-                        @foreach (var x in stockTopAnos)
-                        {
-                            <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
-                        }
-                    </ol>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Stock — Quilometragem</div>
-            <div class="card-body">
-                <div class="small text-muted mb-2">Distribuição por faixas (anúncios ativos).</div>
-
-                @if (stockKmDistribuicao.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th>Faixa</th>
-                                <th class="text-end">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var x in stockKmDistribuicao)
-                            {
+        <!-- 3 cards alinhados (mesmas larguras) -->
+        <div class="cards-3 mt-3">
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Vendas pagas por período</div>
+                <div class="card-body">
+                    @if (vendasSerie.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados no período selecionado.</div>
+                    }
+                    else
+                    {
+                        <table class="table table-sm mb-0 table-soft">
+                            <thead>
                                 <tr>
-                                    <td>@x.Key</td>
-                                    <td class="text-end">@x.Value</td>
+                                    <th>Data</th>
+                                    <th class="text-end">Vendas</th>
                                 </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in vendasSerie)
+                                {
+                                    <tr>
+                                        <td>@p.Key</td>
+                                        <td class="text-end">@p.Value</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Top Marcas (vendas)</div>
+                <div class="card-body">
+                    @if (topMarcas.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <ol class="mb-0">
+                            @foreach (var x in topMarcas)
+                            {
+                                <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
                             }
-                        </tbody>
-                    </table>
-                }
+                        </ol>
+                    }
+                </div>
+            </div>
+
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Top Modelos (vendas)</div>
+                <div class="card-body">
+                    @if (topModelos.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <ol class="mb-0">
+                            @foreach (var x in topModelos)
+                            {
+                                <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
+                            }
+                        </ol>
+                    }
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Stock — Cores (Top 10)</div>
-            <div class="card-body">
-                <div class="small text-muted mb-2">Cores mais comuns (anúncios ativos).</div>
+        <!-- 3 cards alinhados (mesmas larguras) -->
+        <div class="cards-3 mt-3">
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Top Vendedores (vendas pagas no período)</div>
+                <div class="card-body">
+                    @if (topVendedores.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <table class="table table-sm mb-0 table-soft">
+                            <thead>
+                                <tr>
+                                    <th>Vendedor</th>
+                                    <th class="text-end">Vendas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var x in topVendedores)
+                                {
+                                    <tr>
+                                        <td>@x.Key</td>
+                                        <td class="text-end">@x.Value</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
 
-                @if (stockTopCores.Count == 0)
-                {
-                    <div class="text-muted">Sem dados.</div>
-                }
-                else
-                {
-                    <ol class="mb-0">
-                        @foreach (var x in stockTopCores)
-                        {
-                            <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
-                        }
-                    </ol>
-                }
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Top Marcas Favoritadas</div>
+                <div class="card-body">
+                    @if (topMarcasFavoritas.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <ol class="mb-0">
+                            @foreach (var x in topMarcasFavoritas)
+                            {
+                                <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
+                            }
+                        </ol>
+                    }
+                </div>
+            </div>
+
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Visitas por anúncio (ativos)</div>
+                <div class="card-body">
+                    <div class="text-muted small">Considera visitas "agendada" e "realizada".</div>
+                    <div class="mt-2">
+                        <div class="text-muted">Média</div>
+                        <div class="kpi-value">
+                            @(mediaVisitasAtivos == null ? "—" : mediaVisitasAtivos.Value.ToString("0.00", culturaPt))
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <!-- 2 cards alinhados -->
+        <div class="cards-2 mt-3">
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Top localizações (anúncios ativos)</div>
+                <div class="card-body">
+                    @if (topLocalizacoesAnuncios.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <ol class="mb-0">
+                            @foreach (var x in topLocalizacoesAnuncios)
+                            {
+                                <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
+                            }
+                        </ol>
+                    }
+                </div>
+            </div>
+
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Top localizações (vendas pagas no período)</div>
+                <div class="card-body">
+                    @if (topLocalizacoesVendas.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <ol class="mb-0">
+                            @foreach (var x in topLocalizacoesVendas)
+                            {
+                                <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
+                            }
+                        </ol>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock: 3 cards alinhados -->
+        <div class="cards-3 mt-3">
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Stock — Anos</div>
+                <div class="card-body">
+                    <div class="small text-muted mb-2">Baseado em anúncios ativos.</div>
+
+                    <div class="d-flex justify-content-between">
+                        <div class="text-muted">Min</div>
+                        <div class="fw-semibold">@(stockAnoMin?.ToString() ?? "—")</div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <div class="text-muted">Max</div>
+                        <div class="fw-semibold">@(stockAnoMax?.ToString() ?? "—")</div>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <div class="text-muted">Média</div>
+                        <div class="fw-semibold">@(stockAnoMedio == null ? "—" : stockAnoMedio.Value.ToString("0.0", culturaPt))</div>
+                    </div>
+
+                    <div class="fw-semibold mb-1">Top anos</div>
+                    @if (stockTopAnos.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <ol class="mb-0">
+                            @foreach (var x in stockTopAnos)
+                            {
+                                <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
+                            }
+                        </ol>
+                    }
+                </div>
+            </div>
+
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Stock — Quilometragem</div>
+                <div class="card-body">
+                    <div class="small text-muted mb-2">Distribuição por faixas (anúncios ativos).</div>
+
+                    @if (stockKmDistribuicao.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <table class="table table-sm mb-0 table-soft">
+                            <thead>
+                                <tr>
+                                    <th>Faixa</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var x in stockKmDistribuicao)
+                                {
+                                    <tr>
+                                        <td>@x.Key</td>
+                                        <td class="text-end">@x.Value</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+
+            <div class="card card-soft">
+                <div class="card-header card-header-soft">Stock — Cores (Top 10)</div>
+                <div class="card-body">
+                    <div class="small text-muted mb-2">Cores mais comuns (anúncios ativos).</div>
+
+                    @if (stockTopCores.Count == 0)
+                    {
+                        <div class="text-muted">Sem dados.</div>
+                    }
+                    else
+                    {
+                        <ol class="mb-0">
+                            @foreach (var x in stockTopCores)
+                            {
+                                <li>@x.Key <span class="text-muted">(@x.Value)</span></li>
+                            }
+                        </ol>
+                    }
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Novos utilizadores</div>
-                <div class="fs-4 fw-bold">@novosUtilizadores</div>
-                <div class="small text-muted">No período selecionado</div>
-            </div>
-        </div>
-    </div>
+<style>
+    /* ===== FULL WIDTH (igual às outras páginas admin) ===== */
+    .admin-page {
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        background-color: #f5f5f5;
+        min-height: calc(100vh - 70px);
+        padding: 32px 20px;
+    }
 
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Novos compradores</div>
-                <div class="fs-4 fw-bold">@novosCompradores</div>
-                <div class="small text-muted">No período selecionado</div>
-            </div>
-        </div>
-    </div>
+    .admin-card {
+        background-color: #ffffff;
+        border-radius: 14px;
+        padding: 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
 
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Novos vendedores</div>
-                <div class="fs-4 fw-bold">@novosVendedores</div>
-                <div class="small text-muted">No período selecionado</div>
-            </div>
-        </div>
-    </div>
+    .page-title {
+        font-weight: 800;
+        color: #111;
+        letter-spacing: -0.3px;
+    }
 
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted">Novos admins</div>
-                <div class="fs-4 fw-bold">@novosAdmins</div>
-                <div class="small text-muted">No período selecionado</div>
-            </div>
-        </div>
-    </div>
-</div>
+    .admin-head {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .admin-filters {
+        border-radius: 14px;
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr 0.8fr 0.6fr;
+        gap: 12px;
+        align-items: end;
+    }
+
+    /* ===== CARD SOFT ===== */
+    .card-soft {
+        border: 1px solid rgba(0,0,0,0.06);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .card-header-soft {
+        background: #fff;
+        border-bottom: 1px solid rgba(0,0,0,0.08);
+        font-weight: 700;
+        padding: 12px 16px;
+    }
+
+    /* ===== CONTROLS SOFT ===== */
+    .form-control-soft {
+        border-radius: 12px;
+        padding: 10px 12px;
+        border: 1px solid rgba(0,0,0,0.10);
+    }
+
+        .form-control-soft:focus {
+            border-color: rgba(0,0,0,0.35);
+            box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.08);
+        }
+
+    /* ===== BOTÃO PRETO ===== */
+    .btn-dark-custom {
+        background: #000;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        padding: 10px 14px;
+    }
+
+        .btn-dark-custom:hover {
+            background: #1b1b1b;
+            color: #fff;
+        }
+
+    /* ===== KPI GRIDS ===== */
+    .kpi-grid-5 {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .kpi-grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .kpi-card .card-body {
+        padding: 16px;
+    }
+
+    .kpi-label {
+        color: rgba(0,0,0,0.55);
+        font-size: 13px;
+        margin-bottom: 4px;
+    }
+
+    .kpi-value {
+        font-weight: 800;
+        font-size: 22px;
+        line-height: 1.1;
+        color: #111;
+    }
+
+    .kpi-sub {
+        color: rgba(0,0,0,0.5);
+        font-size: 12px;
+        margin-top: 4px;
+    }
+
+    /* ===== SECÇÕES EM GRELHA (alinhamento consistente) ===== */
+    .cards-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .cards-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .table-soft > :not(caption) > * > * {
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .soft-hr {
+        opacity: .12;
+    }
+
+    @@media (max-width: 1200px) {
+        .kpi-grid-5 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .kpi-grid-4 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .filters-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .cards-3 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .cards-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .admin-card {
+            padding: 22px;
+        }
+
+        .kpi-grid-5 {
+            grid-template-columns: 1fr;
+        }
+
+        .kpi-grid-4 {
+            grid-template-columns: 1fr;
+        }
+
+        .cards-3 {
+            grid-template-columns: 1fr;
+        }
+
+        .cards-2 {
+            grid-template-columns: 1fr;
+        }
+
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

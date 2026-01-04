@@ -13,7 +13,6 @@
     var horarios = ViewBag.Horarios as List<Market_Horario_Suporte> ?? new();
     var excecoes = ViewBag.Excecoes as List<Market_Horario_Suporte_Excecao> ?? new();
 
-    // ✅ Calcular se é admin (funciona porque Razor views suportam await)
     var isAdmin = await CurrentUser.IsAdminAsync(User);
 
     string DiaSemana(int d) => d switch
@@ -55,41 +54,50 @@
 }
 
 <div class="container py-4">
-    <!-- ✅ HEADER COM BOTÃO "EDITAR" (SÓ ADMIN) -->
+
+    <!-- HEADER + BOTÃO EDITAR -->
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-            <h2 class="mb-1">@Model.nome</h2>
+
+        <!-- 🔹 TÍTULO (ÚNICA ALTERAÇÃO) -->
+        <div class="text-center w-100">
+            <h1 class="display-5 fw-bold mb-1">@Model.nome</h1>
+
             @if (!string.IsNullOrWhiteSpace(Model.URL))
             {
                 <div class="text-muted">
-                    <a href="@Model.URL" target="_blank" rel="noopener">@Model.URL</a>
+                    <a class="link-primary text-decoration-none"
+                       href="@Model.URL"
+                       target="_blank"
+                       rel="noopener">
+                        @Model.URL
+                    </a>
                 </div>
             }
         </div>
 
         @if (isAdmin)
         {
-            <div class="d-flex align-items-start">
-                <a class="btn btn-outline-primary"
-                   asp-controller="AdminSobreNos"
-                   asp-action="Index">
-                    <i class="bi bi-pencil-square me-1"></i> Editar
-                </a>
-            </div>
+            <a class="btn btn-sm btn-outline-dark ms-auto"
+               asp-controller="AdminSobreNos"
+               asp-action="Index">
+                <i class="bi bi-pencil-square me-1"></i> Editar
+            </a>
         }
     </div>
 
     <div class="row g-4">
-        <!-- Contactos -->
+
+        <!-- CONTACTOS -->
         <div class="col-12 col-lg-5">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm h-100">
                 <div class="card-header bg-white">
                     <strong>Contactos</strong>
                 </div>
-                <div class="card-body">
+
+                <div class="card-body p-0">
                     @if (contactos.Count == 0)
                     {
-                        <div class="text-muted">Sem contactos configurados.</div>
+                        <div class="p-3 text-muted">Sem contactos configurados.</div>
                     }
                     else
                     {
@@ -97,18 +105,23 @@
                             @foreach (var c in contactos)
                             {
                                 var href = LinkContacto(c.tipo, c.valor);
-                                <li class="list-group-item d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <div class="fw-semibold">@c.tipo</div>
-                                        @if (!string.IsNullOrWhiteSpace(href))
-                                        {
-                                            <a href="@href" target="_blank" rel="noopener">@c.valor</a>
-                                        }
-                                        else
-                                        {
-                                            <span>@c.valor</span>
-                                        }
-                                    </div>
+
+                                <li class="list-group-item py-3">
+                                    <div class="fw-semibold text-capitalize">@c.tipo</div>
+
+                                    @if (!string.IsNullOrWhiteSpace(href))
+                                    {
+                                        <a class="link-primary text-decoration-none"
+                                           href="@href"
+                                           target="_blank"
+                                           rel="noopener">
+                                            @c.valor
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-body">@c.valor</div>
+                                    }
                                 </li>
                             }
                         </ul>
@@ -117,12 +130,13 @@
             </div>
         </div>
 
-        <!-- Horário -->
+        <!-- HORÁRIO + EXCEÇÕES -->
         <div class="col-12 col-lg-7">
             <div class="card shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <div class="card-header bg-white">
                     <strong>Horário de Suporte</strong>
                 </div>
+
                 <div class="card-body">
                     @if (horarios.Count == 0)
                     {
@@ -131,21 +145,21 @@
                     else
                     {
                         <div class="table-responsive">
-                            <table class="table align-middle">
-                                <thead>
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Dia</th>
-                                        <th>Estado</th>
-                                        <th>Abre</th>
-                                        <th>Fecha</th>
-                                        <th>Timezone</th>
+                                        <th style="width:35%;">Dia</th>
+                                        <th style="width:15%;">Estado</th>
+                                        <th style="width:15%;">Abre</th>
+                                        <th style="width:15%;">Fecha</th>
+                                        <th style="width:20%;">Timezone</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var h in horarios)
                                     {
                                         <tr>
-                                            <td>@DiaSemana(h.weekday)</td>
+                                            <td class="fw-semibold">@DiaSemana(h.weekday)</td>
                                             <td>
                                                 @if (h.fechado)
                                                 {
@@ -160,6 +174,7 @@
                                             <td>@(h.fechado ? "—" : Hora(h.fecha))</td>
                                             <td>@(string.IsNullOrWhiteSpace(h.timezone) ? "—" : h.timezone)</td>
                                         </tr>
+
                                         @if (!string.IsNullOrWhiteSpace(h.observacoes))
                                         {
                                             <tr class="table-light">
@@ -177,6 +192,7 @@
                     <hr class="my-3" />
 
                     <strong>Exceções</strong>
+
                     @if (excecoes.Count == 0)
                     {
                         <div class="text-muted mt-2">Sem exceções configuradas.</div>
@@ -184,13 +200,13 @@
                     else
                     {
                         <div class="table-responsive mt-2">
-                            <table class="table table-sm align-middle">
-                                <thead>
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Data</th>
-                                        <th>Estado</th>
-                                        <th>Abre</th>
-                                        <th>Fecha</th>
+                                        <th style="width:20%;">Data</th>
+                                        <th style="width:20%;">Estado</th>
+                                        <th style="width:15%;">Abre</th>
+                                        <th style="width:15%;">Fecha</th>
                                         <th>Motivo</th>
                                     </tr>
                                 </thead>
@@ -198,7 +214,7 @@
                                     @foreach (var e in excecoes)
                                     {
                                         <tr>
-                                            <td>@e.data.ToString("dd/MM/yyyy")</td>
+                                            <td class="fw-semibold">@e.data.ToString("dd/MM/yyyy")</td>
                                             <td>
                                                 @if (e.fechado)
                                                 {
@@ -222,7 +238,7 @@
             </div>
         </div>
 
-        <!-- Termos e Políticas -->
+        <!-- TERMOS -->
         <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
@@ -240,5 +256,6 @@
                 </div>
             </div>
         </div>
+
     </div>
 </div>
