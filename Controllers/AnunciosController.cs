@@ -59,6 +59,7 @@ public class AnunciosController : Controller
     // ========================================
     // AJAX: GetModelos (Marca → Modelos)
     // ========================================
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetModelos(int idMarca)
     {
@@ -75,6 +76,7 @@ public class AnunciosController : Controller
     // ========================================
     // AJAX: GetSubModelos (Modelo → Sub_Modelos)
     // ========================================
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetSubModelos(int idModelo)
     {
@@ -91,6 +93,7 @@ public class AnunciosController : Controller
     // ========================================
     // AJAX: GetSpecs (Sub_Modelo → Especificações)
     // ========================================
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetSpecs(int idSubModelo)
     {
@@ -112,6 +115,60 @@ public class AnunciosController : Controller
 
         return Json(s);
     }
+
+    //=========================================================================================
+    // HELPER PARA O TITULO DA VIEW ANUNCIOS/CARROS
+    //=========================================================================================
+    private async Task<string> BuildCarrosTitleAsync(int? idMarca, int? idModelo, int? idSubModelo)
+    {
+        // 1) Sub-modelo -> "Fiat 500 1.0" (SEM "– Carros")
+        if (idSubModelo.HasValue && idSubModelo.Value > 0)
+        {
+            var sub = await _marketDb.Sub_Modelo
+                .AsNoTracking()
+                .Where(s => s.id_sub_modelo == idSubModelo.Value)
+                .Select(s => new
+                {
+                    Sub = s.nome,
+                    Modelo = s.id_modeloNavigation.nome,
+                    Marca = s.id_modeloNavigation.id_marcaNavigation.nome
+                })
+                .FirstOrDefaultAsync();
+
+            if (sub != null)
+                return $"{sub.Marca} {sub.Modelo} {sub.Sub}".Trim();
+        }
+
+        // 2) Modelo -> "Audi A4 – Carros"
+        if (idModelo.HasValue && idModelo.Value > 0)
+        {
+            var mod = await _marketDb.Modelo
+                .AsNoTracking()
+                .Where(m => m.id_modelo == idModelo.Value)
+                .Select(m => new { Modelo = m.nome, Marca = m.id_marcaNavigation.nome })
+                .FirstOrDefaultAsync();
+
+            if (mod != null)
+                return $"{mod.Marca} {mod.Modelo} – Carros";
+        }
+
+        // 3) Marca -> "BMW – Carros"
+        if (idMarca.HasValue && idMarca.Value > 0)
+        {
+            var marca = await _marketDb.Marca
+                .AsNoTracking()
+                .Where(x => x.id_marca == idMarca.Value)
+                .Select(x => x.nome)
+                .FirstOrDefaultAsync();
+
+            if (!string.IsNullOrWhiteSpace(marca))
+                return $"{marca} – Carros";
+        }
+
+        // 4) Sem filtros
+        return "Carros";
+    }
+
 
     // ========================================
     // POST: /Anuncios/Criar
@@ -1409,6 +1466,9 @@ public class AnunciosController : Controller
                 .ThenInclude(v => v.id_sub_modeloNavigation)
                     .ThenInclude(sm => sm.id_modeloNavigation)
                         .ThenInclude(m => m.id_marcaNavigation)
+            .AsQueryable()
+            .Include(a => a.id_vendedorNavigation)
+            .ThenInclude(v => v.id_candidaturaNavigation)
             .AsQueryable();
 
         var filteredForCounts = ApplyCarrosFilters(
@@ -1427,6 +1487,7 @@ public class AnunciosController : Controller
         ViewBag.CountAtivo = Count("ativo");
         ViewBag.CountReservado = Count("reservado");
         ViewBag.CountTodos = ViewBag.CountAtivo + ViewBag.CountReservado;
+        ViewBag.PageTitle = await BuildCarrosTitleAsync(idMarca, idModelo, idSubModelo);
 
         var query = filteredForCounts;
 
@@ -1552,6 +1613,141 @@ public class AnunciosController : Controller
 
         return Json(list);
     }
+
+    [AllowAnonymous]
+    [HttpGet]
+    public async Task<IActionResult> GetCarrosFacetCounts(
+    string? q = null,
+    int? idMarca = null,
+    int? idModelo = null,
+    int? idSubModelo = null,
+    string? categoria = null,
+    string? combustivel = null,
+    string? caixa = null,
+    short? anoDe = null,
+    short? anoAte = null,
+    int? kmDe = null,
+    int? kmAte = null,
+    decimal? precoDe = null,
+    decimal? precoAte = null)
+    {
+        q = (q ?? "").Trim();
+
+        var baseQuery = _marketDb.Anuncio
+            .AsNoTracking()
+            .Where(a => a.estado == "ativo" || a.estado == "reservado")
+            .AsQueryable();
+
+        // ✅ MARCAS: ignora marca/modelo/submodelo (porque são dependentes)
+        var qMarca = ApplyCarrosFilters(
+            baseQuery,
+            q,
+            null, null, null,
+            categoria, combustivel, caixa,
+            anoDe, anoAte, kmDe, kmAte, precoDe, precoAte);
+
+        var marcas = await qMarca
+            .GroupBy(a => new
+            {
+                id = a.id_veiculoNavigation.id_sub_modeloNavigation.id_modeloNavigation.id_marca,
+                nome = a.id_veiculoNavigation.id_sub_modeloNavigation.id_modeloNavigation.id_marcaNavigation.nome
+            })
+            .Select(g => new { id = g.Key.id, text = g.Key.nome, count = g.Count() })
+            .OrderBy(x => x.text)
+            .ToListAsync();
+
+        // ✅ MODELOS: só faz sentido se existir Marca selecionada
+        object modelos = Array.Empty<object>();
+        if (idMarca.HasValue && idMarca > 0)
+        {
+            var qModelo = ApplyCarrosFilters(
+                baseQuery,
+                q,
+                idMarca, null, null,
+                categoria, combustivel, caixa,
+                anoDe, anoAte, kmDe, kmAte, precoDe, precoAte);
+
+            modelos = await qModelo
+                .GroupBy(a => new
+                {
+                    id = a.id_veiculoNavigation.id_sub_modeloNavigation.id_modelo,
+                    nome = a.id_veiculoNavigation.id_sub_modeloNavigation.id_modeloNavigation.nome
+                })
+                .Select(g => new { id = g.Key.id, text = g.Key.nome, count = g.Count() })
+                .OrderBy(x => x.text)
+                .ToListAsync();
+        }
+
+        // ✅ SUB-MODELOS: só faz sentido se existir Modelo selecionado
+        object subModelos = Array.Empty<object>();
+        if (idModelo.HasValue && idModelo > 0)
+        {
+            var qSub = ApplyCarrosFilters(
+                baseQuery,
+                q,
+                idMarca, idModelo, null,
+                categoria, combustivel, caixa,
+                anoDe, anoAte, kmDe, kmAte, precoDe, precoAte);
+
+            subModelos = await qSub
+                .GroupBy(a => new
+                {
+                    id = a.id_veiculoNavigation.id_sub_modelo,
+                    nome = a.id_veiculoNavigation.id_sub_modeloNavigation.nome
+                })
+                .Select(g => new { id = g.Key.id, text = g.Key.nome, count = g.Count() })
+                .OrderBy(x => x.text)
+                .ToListAsync();
+        }
+
+        // ✅ CATEGORIA: ignora categoria (mas mantém marca/modelo/sub se existirem)
+        var qCat = ApplyCarrosFilters(
+            baseQuery,
+            q,
+            idMarca, idModelo, idSubModelo,
+            null, combustivel, caixa,
+            anoDe, anoAte, kmDe, kmAte, precoDe, precoAte);
+
+        var categorias = await qCat
+            .GroupBy(a => a.id_veiculoNavigation.id_sub_modeloNavigation.categoria)
+            .Select(g => new { value = g.Key, count = g.Count() })
+            .Where(x => x.value != null && x.value != "")
+            .OrderBy(x => x.value)
+            .ToListAsync();
+
+        // ✅ COMBUSTÍVEL
+        var qComb = ApplyCarrosFilters(
+            baseQuery,
+            q,
+            idMarca, idModelo, idSubModelo,
+            categoria, null, caixa,
+            anoDe, anoAte, kmDe, kmAte, precoDe, precoAte);
+
+        var combustiveis = await qComb
+            .GroupBy(a => a.id_veiculoNavigation.id_sub_modeloNavigation.combustivel)
+            .Select(g => new { value = g.Key, count = g.Count() })
+            .Where(x => x.value != null && x.value != "")
+            .OrderBy(x => x.value)
+            .ToListAsync();
+
+        // ✅ CAIXA
+        var qCaixa = ApplyCarrosFilters(
+            baseQuery,
+            q,
+            idMarca, idModelo, idSubModelo,
+            categoria, combustivel, null,
+            anoDe, anoAte, kmDe, kmAte, precoDe, precoAte);
+
+        var caixas = await qCaixa
+            .GroupBy(a => a.id_veiculoNavigation.id_sub_modeloNavigation.caixa)
+            .Select(g => new { value = g.Key, count = g.Count() })
+            .Where(x => x.value != null && x.value != "")
+            .OrderBy(x => x.value)
+            .ToListAsync();
+
+        return Json(new { marcas, modelos, subModelos, categorias, combustiveis, caixas });
+    }
+   
 
     // ========================================
     // POST: /Anuncios/GuardarFiltros

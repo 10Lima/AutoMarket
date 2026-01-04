@@ -9,10 +9,19 @@
 }
 
 <div class="container-fluid mt-3">
+
+    @* ✅ HEADER FIXO (acima dos filtros) *@
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3 carros-header-float">
+        <div>
+            <h2 class="mb-1 fw-bold" id="carrosTitle">Carros</h2>
+            <div class="fw-bold" id="carrosCount">Número de anúncios: 0</div>
+        </div>
+    </div>
+
     <div class="row g-4">
 
-        <!-- FILTROS (esquerda) -->
-        <div class="col-12 col-lg-3">
+        <!-- FILTROS (esquerda) — ✅ mt-lg-5 para descer em desktop -->
+        <div class="col-12 col-lg-3 mt-2 mt-lg-5 pt-lg-4">
             <div class="card">
                 <div class="card-body">
 
@@ -211,29 +220,28 @@
                             </div>
                         </div>
 
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-outline-secondary w-100">Aplicar</button>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary w-100">Aplicar</button>
 
                             @if (User.Identity?.IsAuthenticated ?? false)
                             {
-                                <button type="button" class="btn btn-outline-primary w-100" id="btnGuardarFiltros">
+                                <button type="button" class="btn btn-dark w-100" id="btnGuardarFiltros">
                                     Guardar Filtros
                                 </button>
 
-                                <a class="btn btn-outline-secondary w-100" asp-action="MeusFiltros" asp-controller="Anuncios">
+                                <a class="btn btn-dark w-100" asp-action="MeusFiltros" asp-controller="Anuncios">
                                     Meus Filtros
                                 </a>
                             }
                             else
                             {
-                                <a class="btn btn-outline-primary w-100"
+                                <a class="btn btn-dark w-100"
                                    asp-area="Identity" asp-page="/Account/Login"
-                                   asp-route-returnUrl="@Url.Action("Carros","Anuncios")">
+                                   asp-route-returnUrl="@Url.Action("Carros", "Anuncios")">
                                     Guardar Filtros
                                 </a>
                             }
                         </div>
-
                     </form>
                 </div>
             </div>
@@ -241,8 +249,6 @@
 
         <!-- LISTA (direita) -->
         <div class="col-12 col-lg-9">
-            <h3 class="mb-2">Carros</h3>
-
             <div id="resultados">
                 <div class="text-center text-muted py-4">
                     <div class="spinner-border" role="status">
@@ -253,14 +259,105 @@
         </div>
     </div>
 </div>
-
 @section Scripts {
     <script src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
 
     <script>
         $(function () {
+            // ✅ Trigger inicial
             $('#filtrosForm').trigger('submit');
 
+            // ✅ Atualizar header a partir dos meta-dados do partial
+            function updateHeaderFromResults() {
+                const $meta = $('#resultados').find('#carrosMeta');
+                if (!$meta.length) return;
+
+                const title = $meta.data('title') || 'Carros';
+                const count = $meta.data('count');
+
+                $('#carrosTitle').text(title);
+                if (typeof count !== 'undefined') {
+                    $('#carrosCount').text('Número de anúncios: ' + count);
+                }
+            }
+
+            // ✅ NOVO: Atualizar contagens nos filtros (facet counts)
+            async function updateFacetCounts() {
+                const qs = $('#filtrosForm').serialize();
+                const res = await fetch('/Anuncios/GetCarrosFacetCounts?' + qs);
+                if (!res.ok) return;
+
+                const data = await res.json();
+
+                // Criar maps para lookup rápido
+                const marcaCount = {};
+                (data.marcas || []).forEach(x => marcaCount[x.id] = x.count);
+
+                const modeloCount = {};
+                (data.modelos || []).forEach(x => modeloCount[x.id] = x.count);
+
+                const subCount = {};
+                (data.subModelos || []).forEach(x => subCount[x.id] = x.count);
+
+                const catCount = {};
+                (data.categorias || []).forEach(x => catCount[x.value] = x.count);
+
+                const combCount = {};
+                (data.combustiveis || []).forEach(x => combCount[x.value] = x.count);
+
+                const caixaCount = {};
+                (data.caixas || []).forEach(x => caixaCount[x.value] = x.count);
+
+                // ✅ MARCAS (server-side buttons com data-text)
+                $('#marcaList button[data-marca]').each(function () {
+                    const id = $(this).data('marca');
+                    const base = $(this).data('text') || $(this).text().split(' (')[0];
+                    const c = marcaCount[id] ?? 0;
+                    $(this).text(`${base} (${c})`);
+                });
+
+                // ✅ MODELOS
+                $('#modeloList button[data-val]').each(function () {
+                    const id = $(this).data('val');
+                    const base = $(this).data('text') || $(this).text().split(' (')[0];
+                    const c = modeloCount[id] ?? 0;
+                    $(this).text(`${base} (${c})`);
+                });
+
+                // ✅ SUB-MODELOS
+                $('#subModeloList button[data-val]').each(function () {
+                    const id = $(this).data('val');
+                    const base = $(this).data('text') || $(this).text().split(' (')[0];
+                    const c = subCount[id] ?? 0;
+                    $(this).text(`${base} (${c})`);
+                });
+
+                // ✅ CATEGORIA
+                $('#categoriaList button[data-val]').each(function () {
+                    const v = $(this).data('val');
+                    const base = $(this).data('text') || $(this).text().split(' (')[0];
+                    const c = catCount[v] ?? 0;
+                    $(this).text(`${base} (${c})`);
+                });
+
+                // ✅ COMBUSTÍVEL
+                $('#combustivelList button[data-val]').each(function () {
+                    const v = $(this).data('val');
+                    const base = $(this).data('text') || $(this).text().split(' (')[0];
+                    const c = combCount[v] ?? 0;
+                    $(this).text(`${base} (${c})`);
+                });
+
+                // ✅ CAIXA
+                $('#caixaList button[data-val]').each(function () {
+                    const v = $(this).data('val');
+                    const base = $(this).data('text') || $(this).text().split(' (')[0];
+                    const c = caixaCount[v] ?? 0;
+                    $(this).text(`${base} (${c})`);
+                });
+            }
+
+            // ✅ Bind resultados (tabs + ordenação)
             function bindResultados() {
                 $('#resultados').find('#sortSelect').off('change').on('change', function () {
                     $('input[name="sort"]').val(this.value);
@@ -274,12 +371,70 @@
                 });
             }
 
+            // ✅ Bind galeria com setas
+            function initCardGallery($media) {
+                if ($media.data('amInit')) return;
+                $media.data('amInit', true);
+
+                const raw = $media.attr('data-images');
+                if (!raw) return;
+
+                let imgs = [];
+                try { imgs = JSON.parse(raw) || []; } catch { imgs = []; }
+                if (imgs.length <= 1) return;
+
+                const $img = $media.find('img.am-card-img');
+                const $prev = $media.find('.am-prev');
+                const $next = $media.find('.am-next');
+
+                let idx = 0;
+
+                function refreshButtons() {
+                    const canPrev = idx > 0;
+                    const canNext = idx < imgs.length - 1;
+
+                    $prev.toggleClass('is-disabled', !canPrev).attr('aria-disabled', !canPrev);
+                    $next.toggleClass('is-disabled', !canNext).attr('aria-disabled', !canNext);
+                }
+
+                function setIndex(newIdx) {
+                    idx = newIdx;
+                    if ($img.length) $img.attr('src', imgs[idx]);
+                    refreshButtons();
+                }
+
+                refreshButtons();
+
+                $prev.off('click').on('click', function (e) {
+                    e.preventDefault(); e.stopPropagation();
+                    if (idx <= 0) return;
+                    setIndex(idx - 1);
+                });
+
+                $next.off('click').on('click', function (e) {
+                    e.preventDefault(); e.stopPropagation();
+                    if (idx >= imgs.length - 1) return;
+                    setIndex(idx + 1);
+                });
+            }
+
+            function bindGalleries() {
+                $('#resultados .am-card-media[data-images]').each(function () {
+                    initCardGallery($(this));
+                });
+            }
+
+            // ✅ Após cada AJAX refresh
             $(document).on('ajaxComplete', function (e, xhr, settings) {
                 if (settings && settings.url && settings.url.includes('/Anuncios/_CarrosLista')) {
                     bindResultados();
+                    bindGalleries();
+                    updateHeaderFromResults();
+                    updateFacetCounts(); // ✅ NOVO: atualiza contagens
                 }
             });
 
+            // ✅ Search input (debounce)
             function wireSearch(inputSelector, listSelector) {
                 $(document).on('input', inputSelector, function () {
                     const term = (this.value || '').toLowerCase();
@@ -293,6 +448,7 @@
 
             wireSearch('input[data-filter]', '.list-group');
 
+            // ✅ Renderizar listas dinâmicas (categoria, combustível, caixa)
             function renderList(containerId, btnId, hiddenId, items) {
                 const $list = $('#' + containerId);
                 $list.find('button[data-val]').remove();
@@ -300,10 +456,12 @@
                 items.forEach(val => {
                     const $b = $('<button type="button" class="list-group-item list-group-item-action">')
                         .attr('data-val', val)
+                        .attr('data-text', val) // ✅ NOVO: guarda texto limpo
                         .text(val)
                         .on('click', function () {
-                            $('#' + hiddenId).val(val);
-                            $('#' + btnId).text(val);
+                            const clean = $(this).data('text'); // ✅ usa texto limpo
+                            $('#' + hiddenId).val(clean);
+                            $('#' + btnId).text(clean);
                             $('#filtrosForm').trigger('submit');
                         });
 
@@ -320,6 +478,7 @@
                 if (current) $('#' + btnId).text(current);
             }
 
+            // ✅ Limpar filtros
             $(document).on('click', '[data-clear="categoria"]', function () {
                 $('#categoriaVal').val('');
                 $('#categoriaBtn').text('Selecionar...');
@@ -340,6 +499,7 @@
             loadStringList("/Anuncios/GetCombustiveis", "combustivelList", "combustivelBtn", "combustivelVal");
             loadStringList("/Anuncios/GetCaixas", "caixaList", "caixaBtn", "caixaVal");
 
+            // ✅ Marca/Modelo/SubModelo (cascata)
             function setBtnText(btnId, text) {
                 $('#' + btnId).text(text || 'Selecionar...');
             }
@@ -397,6 +557,7 @@
                 list.forEach(m => {
                     const $b = $('<button type="button" class="list-group-item list-group-item-action">')
                         .attr('data-val', m.id_modelo)
+                        .attr('data-text', m.nome) // ✅ NOVO
                         .text(m.nome)
                         .on('click', async function () {
                             $('#idModeloVal').val(m.id_modelo);
@@ -415,6 +576,7 @@
                             list2.forEach(s => {
                                 const $sb = $('<button type="button" class="list-group-item list-group-item-action">')
                                     .attr('data-val', s.id_sub_modelo)
+                                    .attr('data-text', s.nome) // ✅ NOVO
                                     .text(s.nome)
                                     .on('click', function () {
                                         $('#idSubModeloVal').val(s.id_sub_modelo);
@@ -436,6 +598,7 @@
                 $('#filtrosForm').trigger('submit');
             });
 
+            // ✅ Init marca/modelo se vem URL
             (async function initMarcaModelo() {
                 const initialMarca = $('#idMarcaVal').val();
                 const initialModelo = $('#idModeloVal').val();
@@ -454,6 +617,7 @@
                     list.forEach(m => {
                         const $b = $('<button type="button" class="list-group-item list-group-item-action">')
                             .attr('data-val', m.id_modelo)
+                            .attr('data-text', m.nome) // ✅ NOVO
                             .text(m.nome)
                             .on('click', async function () {
                                 $('#idModeloVal').val(m.id_modelo);
@@ -472,6 +636,7 @@
                                 list2.forEach(s => {
                                     const $sb = $('<button type="button" class="list-group-item list-group-item-action">')
                                         .attr('data-val', s.id_sub_modelo)
+                                        .attr('data-text', s.nome) // ✅ NOVO
                                         .text(s.nome)
                                         .on('click', function () {
                                             $('#idSubModeloVal').val(s.id_sub_modelo);
@@ -506,6 +671,7 @@
                         list2.forEach(s => {
                             const $sb = $('<button type="button" class="list-group-item list-group-item-action">')
                                 .attr('data-val', s.id_sub_modelo)
+                                .attr('data-text', s.nome) // ✅ NOVO
                                 .text(s.nome)
                                 .on('click', function () {
                                     $('#idSubModeloVal').val(s.id_sub_modelo);
@@ -545,7 +711,7 @@
                         }
                     },
                     error: function () {
-                        alert('Erro aoguardar filtros.');
+                        alert('Erro ao guardar filtros.');
                     }
                 });
             });

@@ -7,8 +7,17 @@
     string maxStr = maxDate.ToString("yyyy-MM-dd");
 }
 
-<div class="alert alert-light border mb-0">
-    <h6 class="mb-2"><i class="bi bi-calendar-check"></i> Agendar Visita</h6>
+<div class="alert alert-light border mb-0 agendar-panel">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="mb-0"><i class="bi bi-calendar-check"></i> Agendar Visita</h6>
+
+        <button type="button"
+                class="am-close"
+                onclick="amCloseAgendar(@idAnuncio)"
+                aria-label="Fechar">
+            &times;
+        </button>
+    </div>
 
     <div class="text-danger mb-2">
         @Html.ValidationSummary()
@@ -20,22 +29,21 @@
           data-ajax-update="#agendarSlot_@idAnuncio"
           data-ajax-mode="replace">
         @Html.AntiForgeryToken()
-
         <input type="hidden" name="idAnuncio" value="@idAnuncio" />
 
         <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-6">
+            <div class="col-6">
                 <label class="form-label mb-1">Data</label>
                 <input class="form-control" type="date" name="Data" min="@minStr" max="@maxStr" required />
             </div>
 
-            <div class="col-12 col-md-4">
+            <div class="col-6">
                 <label class="form-label mb-1">Hora (5 em 5 min)</label>
                 <input class="form-control" type="time" name="Hora" step="300" required />
             </div>
 
-            <div class="col-12 col-md-2 d-grid">
-                <button class="btn btn-primary" type="submit">Submeter</button>
+            <div class="col-12 d-grid am-mt-btn">
+                <button class="btn-am btn-am-ghost" type="submit">Submeter</button>
             </div>
         </div>
     </form>

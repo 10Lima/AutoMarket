@@ -1,47 +1,186 @@
+﻿@using System.Text.Json
 @model IEnumerable<AutoMarket.Models.Market.Anuncio>
 
 @{
-    var estado = (ViewBag.Estado as string) ?? "todos";
-    var sort = (ViewBag.Sort as string) ?? "recent";
-
-    int countTodos = (int)(ViewBag.CountTodos ?? 0);
-    int countAtivo = (int)(ViewBag.CountAtivo ?? 0);
-    int countReservado = (int)(ViewBag.CountReservado ?? 0);
+    var estado = ViewBag.Estado as string ?? "todos";
+    var sort = ViewBag.Sort as string ?? "recent";
+    var countAtivo = ViewBag.CountAtivo ?? 0;
+    var countReservado = ViewBag.CountReservado ?? 0;
+    var countTodos = ViewBag.CountTodos ?? 0;
+    var pageTitle = (ViewBag.PageTitle as string) ?? "Carros";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <div>
-        <div class="text-muted">N�mero de an�ncios: @countTodos</div>
+@* ✅ META-DADOS para o JS ler (invisível na UI) *@
+<div id="carrosMeta" data-title="@pageTitle" data-count="@countTodos" style="display:none;"></div>
+
+<!-- TABS + ORDENAÇÃO -->
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" style="margin-top:-6px;">
+    <div class="btn-group am-tabs w-100" role="group" style="max-width: 420px;">
+        <button type="button"
+                class="btn @(estado == "todos" ? "btn-dark" : "btn-outline-dark") flex-fill"
+                data-estado="todos">
+            Todos (@countTodos)
+        </button>
+        <button type="button"
+                class="btn @(estado == "ativo" ? "btn-dark" : "btn-outline-dark") flex-fill"
+                data-estado="ativo">
+            Ativos (@countAtivo)
+        </button>
+        <button type="button"
+                class="btn @(estado == "reservado" ? "btn-dark" : "btn-outline-dark") flex-fill"
+                data-estado="reservado">
+            Reservados (@countReservado)
+        </button>
     </div>
 
-    <select class="form-select" style="min-width: 240px;" id="sortSelect">
-        <option value="destaque" selected="@(sort=="destaque")">Destacado</option>
-        <option value="recent" selected="@(sort=="recent")">Mais Recentes</option>
-        <option value="price_asc" selected="@(sort=="price_asc")">Pre�o: Mais baixo</option>
-        <option value="price_desc" selected="@(sort=="price_desc")">Pre�o: Mais alto</option>
-        <option value="km_asc" selected="@(sort=="km_asc")">KM: mais baixa</option>
-        <option value="km_desc" selected="@(sort=="km_desc")">KM: mais alta</option>
-        <option value="hp_asc" selected="@(sort=="hp_asc")">Pot�ncia: mais baixa</option>
-        <option value="hp_desc" selected="@(sort=="hp_desc")">Pot�ncia: mais alta</option>
+    <select id="sortSelect" class="form-select py-2" style="width: 240px;">
+        <option value="recent" selected="@(sort == "recent")">Mais recentes</option>
+        <option value="price_asc" selected="@(sort == "price_asc")">Preço: menor</option>
+        <option value="price_desc" selected="@(sort == "price_desc")">Preço: maior</option>
+        <option value="km_asc" selected="@(sort == "km_asc")">KM: menor</option>
+        <option value="km_desc" selected="@(sort == "km_desc")">KM: maior</option>
+        <option value="hp_asc" selected="@(sort == "hp_asc")">Potência: menor</option>
+        <option value="hp_desc" selected="@(sort == "hp_desc")">Potência: maior</option>
     </select>
 </div>
 
-<ul class="nav nav-tabs mb-3">
-    <li class="nav-item">
-        <a class="nav-link @(estado=="todos" ? "active" : "")" href="#" data-estado="todos">
-            Todos (@countTodos)
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link @(estado=="ativo" ? "active" : "")" href="#" data-estado="ativo">
-            Ativos (@countAtivo)
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link @(estado=="reservado" ? "active" : "")" href="#" data-estado="reservado">
-            Reservados (@countReservado)
-        </a>
-    </li>
-</ul>
+@if (!Model.Any())
+{
+    <div class="alert alert-light border text-center py-5">
+        <i class="bi bi-search" style="font-size: 3rem; opacity: 0.3;"></i>
+        <p class="mt-3 mb-0">Sem anúncios para os filtros atuais.</p>
+    </div>
+}
+else
+{
+    <div class="d-flex flex-column gap-3">
+        @foreach (var a in Model)
+        {
+            var imgs = (a.Anuncio_Imagem ?? new List<AutoMarket.Models.Market.Anuncio_Imagem>())
+            .OrderByDescending(x => x.principal)
+            .ThenBy(x => x.ordem ?? 9999)
+            .Select(x => x.id_imagem_anuncioNavigation?.url)
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .ToList();
 
-@await Html.PartialAsync("_CarrosListaCards", Model)
+            var img0 = imgs.FirstOrDefault();
+
+            var v = a.id_veiculoNavigation;
+            var sm = v?.id_sub_modeloNavigation;
+            var md = sm?.id_modeloNavigation;
+            var mk = md?.id_marcaNavigation;
+
+            var tipoVendRaw = a.id_vendedorNavigation?.id_candidaturaNavigation?.tipo;
+            var tipoVendedor = string.Equals(tipoVendRaw, "empresa", StringComparison.OrdinalIgnoreCase)
+            ? "Empresa"
+            : "Particular";
+
+            <div class="card shadow-sm am-list-card">
+                <a class="text-decoration-none text-dark am-card-link"
+                   asp-action="Detalhes"
+                   asp-controller="Anuncios"
+                   asp-route-id="@a.id_anuncio">
+
+                    <div class="am-card-row">
+                        <!-- IMAGEM -->
+                        <div class="am-card-media"
+                             @(imgs.Count > 0 ? Html.Raw($"data-images='{Html.Raw(JsonSerializer.Serialize(imgs))}'") : null)>
+
+
+                            @if (!string.IsNullOrWhiteSpace(img0))
+                            {
+                                <img class="am-card-img" src="@img0" alt="@a.titulo" />
+                            }
+                            else
+                            {
+                                <div class="am-card-img-placeholder text-muted">
+                                    <i class="bi bi-image" style="font-size:2.2rem;"></i>
+                                </div>
+                            }
+
+                            @if (imgs.Count > 1)
+                            {
+                                <button type="button" class="am-img-nav am-prev" aria-label="Imagem anterior">&lt;</button>
+                                <button type="button" class="am-img-nav am-next" aria-label="Imagem seguinte">&gt;</button>
+                            }
+
+                            @if (a.destaque)
+                            {
+                                <span class="badge bg-primary position-absolute top-0 end-0 m-2">
+                                    <i class="bi bi-star-fill"></i> Promovido
+                                </span>
+                            }
+
+                            @if (string.Equals(a.estado, "reservado", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2">
+                                    Reservado
+                                </span>
+                            }
+                        </div>
+
+                        <!-- TEXTO -->
+                        <div class="am-card-main">
+                            <div class="am-title text-truncate">@a.titulo</div>
+
+                            <div class="am-subtitle text-truncate">
+                                @mk?.nome @md?.nome @(sm != null ? "• " + sm.nome : "")
+                            </div>
+
+                            <!-- LINHA 1: cilindrada -> caixa -->
+                            <div class="am-specs-row">
+                                @if (sm?.cilindrada > 0)
+                                {
+                                    <span>@sm.cilindrada cm³</span>
+                                }
+
+                                @if (sm?.potencia_hp > 0)
+                                {
+                                    <span><i class="bi bi-lightning-charge"></i> @sm.potencia_hp cv</span>
+                                }
+
+                                @if (v?.quilometragem != null)
+                                {
+                                    <span><i class="bi bi-speedometer2"></i> @v.quilometragem.Value.ToString("N0") km</span>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(sm?.combustivel))
+                                {
+                                    <span><i class="bi bi-fuel-pump"></i> @sm.combustivel</span>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(sm?.caixa))
+                                {
+                                    <span><i class="bi bi-gear"></i> @sm.caixa</span>
+                                }
+                            </div>
+
+                            <!-- LINHA 2: ano -->
+                            <div class="am-year-row">
+                                @if (v?.ano != null)
+                                {
+                                    <span><i class="bi bi-calendar3"></i> @v.ano</span>
+                                }
+                            </div>
+
+                            <!-- LINHA 3: localização + tipo -->
+                            <div class="am-meta-row">
+                                <span><i class="bi bi-geo-alt"></i> @(string.IsNullOrWhiteSpace(a.localizacao) ? "—" : a.localizacao)</span>
+                                <span><i class="bi bi-person-badge"></i> @tipoVendedor</span>
+                            </div>
+                        </div>
+
+
+
+                        <!-- PREÇO -->
+                        <div class="am-card-price">
+                            <div class="fs-4 fw-bold">
+                                @(a.preco.HasValue ? $"{a.preco.Value:N0} €" : "—")
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}

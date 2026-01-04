@@ -1,31 +1,421 @@
-html {
-  font-size: 14px;
+﻿html {
+    font-size: 14px;
 }
 
 @media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+    html {
+        font-size: 16px;
+    }
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
 html {
-  position: relative;
-  min-height: 100%;
+    position: relative;
+    min-height: 100%;
 }
 
 body {
-  margin-bottom: 60px;
+    margin-bottom: 60px;
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+    color: var(--bs-secondary-color);
+    text-align: end;
 }
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+    text-align: start;
+}
+
+/* ===== Lista de anúncios (layout tipo standvirtual) ===== */
+.am-list-card {
+    border-radius: 16px;
+    overflow: visible;
+    background: #fff;
+}
+
+.am-card-link {
+    display: block;
+}
+
+.am-card-row {
+    display: flex;
+    align-items: stretch;
+}
+
+/* IMAGEM FIXA À ESQUERDA (DESKTOP) */
+.am-card-media {
+    position: relative;
+    flex: 0 0 320px;
+    width: 320px;
+    height: 200px;
+    background: #f3f4f6;
+    overflow: hidden;
+}
+
+.am-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.am-card-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.am-card-main {
+    flex: 1 1 auto;
+    padding: 16px 18px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.am-card-price {
+    flex: 0 0 180px;
+    padding: 16px 18px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    white-space: nowrap;
+}
+
+/* Setas */
+.am-img-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0,0,0,.45);
+    color: #fff;
+    font-size: 22px;
+    line-height: 44px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity .12s ease;
+    cursor: pointer;
+    z-index: 3;
+}
+
+.am-prev {
+    left: 10px;
+}
+
+.am-next {
+    right: 10px;
+}
+
+.am-card-media:hover .am-img-nav,
+.am-card-media:focus-within .am-img-nav {
+    opacity: 1;
+}
+
+.am-img-nav.is-disabled {
+    background: rgba(0,0,0,.18);
+    color: rgba(255,255,255,.65);
+    cursor: default;
+}
+
+/* MOBILE: empilha */
+@media (max-width: 767.98px) {
+    .am-card-row {
+        flex-direction: column;
+    }
+
+    .am-card-media {
+        width: 100%;
+        flex: 0 0 auto;
+        height: auto;
+        aspect-ratio: 16/10;
+    }
+
+    .am-card-price {
+        justify-content: flex-start;
+        padding-top: 0;
+    }
+}
+
+/* Move o header para baixo sem empurrar o layout */
+.carros-header-float {
+    position: relative;
+    top: 25px;
+    margin-bottom: -18px;
+}
+
+/* título/subtítulo */
+.am-title {
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.am-subtitle {
+    color: var(--bs-secondary-color);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.am-specs-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    font-size: 0.95rem;
+    overflow: visible;
+    max-width: none;
+    white-space: nowrap;
+}
+
+    .am-specs-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    .am-specs-row > span {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+/* LINHA 2 e 3 (ano, localização, data) */
+.am-year-row,
+.am-meta-row {
+    display: flex;
+    gap: 18px;
+    width: 100%;
+    color: var(--bs-secondary-color);
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+}
+
+    .am-year-row > span,
+    .am-meta-row > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+/* ===== Detalhes: Desktop-only (sem mobile) ===== */
+
+/* Layout fixo desktop com sticky direita */
+.ad-details {
+    max-width: 1280px;
+}
+
+.sticky-side {
+    position: sticky;
+    top: 18px;
+}
+
+/* Galeria: arredondada + contador */
+.am-gallery-media {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #f3f4f6;
+}
+
+    .am-gallery-media:hover .am-img-nav,
+    .am-gallery-media:focus-within .am-img-nav {
+        opacity: 1;
+    }
+
+.img-counter {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    background: rgba(0,0,0,.68);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: .85rem;
+    font-weight: 650;
+    z-index: 2;
+}
+
+/* Miniaturas em grelha (sem scroll) */
+.thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: .5rem;
+    padding: .75rem;
+}
+
+    .thumb-grid .thumb {
+        min-width: 0 !important;
+        height: 70px !important;
+        border-radius: 12px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        overflow: hidden;
+        transition: border-color .12s ease;
+    }
+
+        .thumb-grid .thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .thumb-grid .thumb.active {
+            border-color: #0d6efd;
+        }
+
+        .thumb-grid .thumb:hover {
+            border-color: rgba(0,0,0,.2);
+        }
+
+/* Specs do veículo em 4 colunas */
+.spec-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .75rem 1rem;
+}
+
+    .spec-grid > div {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .spec-grid strong {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: rgba(0,0,0,.55);
+        margin-bottom: .2rem;
+    }
+
+/* Meta list (lado direito) */
+.meta-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .75rem;
+}
+
+.meta-item {
+    display: flex;
+    gap: .65rem;
+    align-items: flex-start;
+}
+
+    .meta-item i {
+        opacity: .75;
+        margin-top: .1rem;
+    }
+
+    .meta-item .label {
+        font-size: .78rem;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: rgba(0,0,0,.55);
+    }
+
+    .meta-item .value {
+        font-weight: 650;
+    }
+
+/* Botões pretos - sistema */
+.btn-am {
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-weight: 600;
+    letter-spacing: .2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    width: 100%;
+}
+
+    .btn-am:focus-visible {
+        outline: 3px solid rgba(0,0,0,.25);
+        outline-offset: 2px;
+    }
+
+/* Preto cheio */
+.btn-am-solid {
+    background: #111;
+    border: 1px solid #111;
+    color: #fff;
+}
+
+    .btn-am-solid:hover {
+        background: #000;
+        border-color: #000;
+        color: #fff;
+    }
+
+/* Preto outline */
+.btn-am-outline {
+    background: transparent;
+    border: 1px solid #111;
+    color: #111;
+}
+
+    .btn-am-outline:hover {
+        background: rgba(0,0,0,.04);
+    }
+
+/* Ghost (ainda "preto", mas leve) */
+.btn-am-ghost {
+    background: rgba(0,0,0,.03);
+    border: 1px solid rgba(0,0,0,.08);
+    color: #111;
+}
+
+    .btn-am-ghost:hover {
+        background: rgba(0,0,0,.06);
+    }
+
+/* X fechar */
+.am-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,.12);
+    background: rgba(0,0,0,.03);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    line-height: 1;
+    color: #111;
+    flex: 0 0 auto;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+
+    .am-close:hover {
+        background: rgba(0,0,0,.06);
+    }
+
+/* ===== Painel de agendamento (trava overflow) ===== */
+.agendar-panel {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+    .agendar-panel * {
+        box-sizing: border-box;
+    }
+
+/* ===== Botão compacto (caso uses noutro sítio) ===== */
+.btn-am-xs {
+    padding: 9px 10px;
+    border-radius: 12px;
+    font-size: .95rem;
+    white-space: nowrap;
 }
