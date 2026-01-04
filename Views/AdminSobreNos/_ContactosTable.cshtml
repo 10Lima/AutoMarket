@@ -12,8 +12,8 @@
 else
 {
     <div class="table-responsive">
-        <table class="table align-middle">
-            <thead>
+        <table class="table table-sm align-middle">
+            <thead class="table-light">
                 <tr>
                     <th>Tipo</th>
                     <th>Valor</th>
@@ -45,7 +45,6 @@ else
                         </td>
 
                         <td class="text-end" style="width:260px;">
-                            <!-- Form de guardar (não atravessa TR) -->
                             <form id="@formId"
                                   asp-action="SaveContacto"
                                   method="post"
@@ -57,10 +56,9 @@ else
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id_market" value="@idMarket" />
                                 <input type="hidden" name="id_contacto" value="@c.id_contacto" />
-                                <button class="btn btn-sm btn-outline-primary" type="submit">Guardar</button>
+                                <button class="btn btn-sm btn-outline-dark" type="submit">Guardar</button>
                             </form>
 
-                            <!-- Form de remover -->
                             <form asp-action="DeleteContacto"
                                   method="post"
                                   data-ajax="true"

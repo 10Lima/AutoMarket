@@ -3,27 +3,75 @@
     var motivo = ViewData["Motivo"] as string ?? "Motivo não indicado.";
 }
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <h1 class="mb-4">
-                <i class="bi bi-shield-lock text-danger"></i> @ViewData["Title"]
-            </h1>
+<style>
+    /* Mesmo estilo das outras views, sem fundo cinzento */
+    .am-page {
+        min-height: calc(100vh - 56px);
+        padding: 32px 0;
+    }
 
-            <div class="alert alert-danger">
-                <h5 class="alert-heading">A tua conta encontra-se bloqueada.</h5>
-                <hr />
-                <p class="mb-0"><strong>Motivo:</strong> @motivo</p>
-            </div>
+    .am-shell {
+        max-width: 980px;
+    }
 
-            <div class="text-muted small">
-                Se consideras que este bloqueio é indevido, contacta o suporte da plataforma.
-            </div>
+    .am-panel {
+        background: #fff;
+        border: 1px solid rgba(0,0,0,.06);
+        border-radius: 18px;
+        box-shadow: 0 18px 40px rgba(0,0,0,.08);
+        padding: 28px;
+    }
 
-            <div class="mt-4">
-                <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">
-                    Voltar à página inicial
-                </a>
+    .am-title {
+        font-size: 44px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        line-height: 1.05;
+        margin: 0;
+    }
+
+    .am-subtext {
+        color: rgba(0,0,0,.65);
+        font-size: 14px;
+        margin-top: 8px;
+    }
+
+    .am-alert {
+        border-radius: 14px;
+    }
+</style>
+
+<div class="am-page">
+    <div class="container am-shell">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+
+                <div class="am-panel">
+
+                    <!-- TÍTULO -->
+                    <div class="text-center mb-4">
+                        <h1 class="am-title">
+                            <i class="bi bi-shield-lock text-danger me-1"></i> @ViewData["Title"]
+                        </h1>
+                    </div>
+
+                    <!-- ALERTA -->
+                    <div class="alert alert-danger am-alert mb-3">
+                        <h5 class="alert-heading mb-2">
+                            A tua conta encontra-se bloqueada.
+                        </h5>
+                        <hr />
+                        <p class="mb-0">
+                            <strong>Motivo:</strong> @motivo
+                        </p>
+                    </div>
+
+                    <div class="am-subtext">
+                        Se consideras que este bloqueio é indevido, contacta o suporte da plataforma.
+                    </div>
+
+                </div>
+
             </div>
         </div>
     </div>

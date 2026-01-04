@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
-
 namespace AutoMarket.Controllers;
 
 public class VenderController : Controller
@@ -20,9 +19,30 @@ public class VenderController : Controller
         _currentUser = currentUser;
     }
 
+    // ✅ Bloquear admins no VenderController
+    private async Task<IActionResult?> BloquearSeAdminAsync()
+    {
+        // Só faz sentido avaliar se estiver autenticado
+        if (User?.Identity?.IsAuthenticated == true)
+        {
+            var isAdmin = await _currentUser.IsAdminAsync(User);
+            if (isAdmin)
+            {
+                // Admin não deve usar o fluxo de vendedor
+                return RedirectToAction("Index", "Home");
+            }
+        }
+
+        return null;
+    }
+
     // GET: /Vender/Comecar
     public async Task<IActionResult> Comecar()
     {
+        // ✅ Se for admin autenticado, bloqueia
+        var adminBlock = await BloquearSeAdminAsync();
+        if (adminBlock != null) return adminBlock;
+
         if (!User.Identity?.IsAuthenticated ?? true)
         {
             return RedirectToPage("/Account/Register", new
@@ -55,13 +75,16 @@ public class VenderController : Controller
         return RedirectToAction(nameof(Candidatar));
     }
 
-
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Candidatar(
         [Bind("tipo,NIF_NIPC,telemovel_comercial,website_url")] Candidatura_Vendedor input)
     {
+        // ✅ Se for admin autenticado, bloqueia
+        var adminBlock = await BloquearSeAdminAsync();
+        if (adminBlock != null) return adminBlock;
+
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null)
             return RedirectToPage("/Account/Register", new { area = "Identity" });
@@ -83,13 +106,13 @@ public class VenderController : Controller
         if (pendente)
             return RedirectToAction(nameof(Estado));
 
-        // Campos que NÃO vêm do form (são definidos no servidor ou são navegações)
+        // Campos que NÃO vêm do form
         ModelState.Remove(nameof(Candidatura_Vendedor.id_candidatura));
         ModelState.Remove(nameof(Candidatura_Vendedor.id_utilizador));
         ModelState.Remove(nameof(Candidatura_Vendedor.estado));
         ModelState.Remove(nameof(Candidatura_Vendedor.data_submissao));
 
-        // Navegações (DB-first costuma marcar como required por serem non-nullable)
+        // Navegações (DB-first)
         ModelState.Remove(nameof(Candidatura_Vendedor.id_utilizadorNavigation));
         ModelState.Remove(nameof(Candidatura_Vendedor.Vendedor));
         ModelState.Remove(nameof(Candidatura_Vendedor.Ace_Admin_Acao));
@@ -135,6 +158,10 @@ public class VenderController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancelar()
     {
+        // ✅ Se for admin autenticado, bloqueia
+        var adminBlock = await BloquearSeAdminAsync();
+        if (adminBlock != null) return adminBlock;
+
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null)
             return Unauthorized();
@@ -167,6 +194,10 @@ public class VenderController : Controller
     [HttpGet]
     public async Task<IActionResult> Estado()
     {
+        // ✅ Se for admin autenticado, bloqueia
+        var adminBlock = await BloquearSeAdminAsync();
+        if (adminBlock != null) return adminBlock;
+
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null)
             return RedirectToPage("/Account/Register", new { area = "Identity" });
@@ -201,6 +232,10 @@ public class VenderController : Controller
     [HttpGet]
     public async Task<IActionResult> Candidatar(int? nova = null)
     {
+        // ✅ Se for admin autenticado, bloqueia
+        var adminBlock = await BloquearSeAdminAsync();
+        if (adminBlock != null) return adminBlock;
+
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null)
             return RedirectToPage("/Account/Register", new { area = "Identity" });

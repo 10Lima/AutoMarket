@@ -34,13 +34,28 @@ public class AdminAcoesController : Controller
         "recuperar_admin"
     };
 
+    // ✅ Ordenações válidas
+    private static readonly HashSet<string> OrdensValidas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "recentes",
+        "antigas"
+    };
+
     // GET: /AdminAcoes
-    public async Task<IActionResult> Index(string? tipo, string? admin, string? utilizador)
+    public async Task<IActionResult> Index(
+        string? tipo,
+        string? admin,
+        string? utilizador,
+        string? ordem,
+        DateTime? dataInicio,
+        DateTime? dataFim)
     {
         if (!await _currentUser.IsAdminAsync(User))
             return Forbid();
 
         tipo = NormalizeTipo(tipo);
+        ordem = NormalizeOrdem(ordem);
+
         admin = (admin ?? "").Trim();
         utilizador = (utilizador ?? "").Trim();
 
@@ -48,7 +63,11 @@ public class AdminAcoesController : Controller
         ViewData["AdminAtual"] = admin;
         ViewData["UtilizadorAtual"] = utilizador;
 
-        var (lista, usernames) = await GetAcoesAsync(tipo, admin, utilizador);
+        ViewData["OrdemAtual"] = ordem;
+        ViewData["DataInicioAtual"] = dataInicio;
+        ViewData["DataFimAtual"] = dataFim;
+
+        var (lista, usernames) = await GetAcoesAsync(tipo, admin, utilizador, ordem, dataInicio, dataFim);
         ViewData["Usernames"] = usernames;
 
         return View(lista);
@@ -56,16 +75,24 @@ public class AdminAcoesController : Controller
 
     // GET: /AdminAcoes/Lista (AJAX)
     [HttpGet]
-    public async Task<IActionResult> Lista(string? tipo, string? admin, string? utilizador)
+    public async Task<IActionResult> Lista(
+        string? tipo,
+        string? admin,
+        string? utilizador,
+        string? ordem,
+        DateTime? dataInicio,
+        DateTime? dataFim)
     {
         if (!await _currentUser.IsAdminAsync(User))
             return Forbid();
 
         tipo = NormalizeTipo(tipo);
+        ordem = NormalizeOrdem(ordem);
+
         admin = (admin ?? "").Trim();
         utilizador = (utilizador ?? "").Trim();
 
-        var (lista, usernames) = await GetAcoesAsync(tipo, admin, utilizador);
+        var (lista, usernames) = await GetAcoesAsync(tipo, admin, utilizador, ordem, dataInicio, dataFim);
         ViewData["Usernames"] = usernames;
 
         return PartialView("_AcoesTable", lista);
@@ -82,11 +109,28 @@ public class AdminAcoesController : Controller
         return v;
     }
 
+    // ✅ Helper: normalizar ordem
+    private static string NormalizeOrdem(string? v)
+    {
+        v = (v ?? "recentes").Trim().ToLowerInvariant();
+
+        if (!OrdensValidas.Contains(v))
+            return "recentes";
+
+        return v;
+    }
+
     // =======================
     // Query central (1 sítio)
     // =======================
     private async Task<(List<AutoMarket.Models.Market.Ace_Admin_Acao> lista, Dictionary<int, string> usernames)>
-        GetAcoesAsync(string tipo, string admin, string utilizador)
+        GetAcoesAsync(
+            string tipo,
+            string admin,
+            string utilizador,
+            string ordem,
+            DateTime? dataInicio,
+            DateTime? dataFim)
     {
         IQueryable<AutoMarket.Models.Market.Ace_Admin_Acao> q =
             _marketDb.Ace_Admin_Acao.AsNoTracking();
@@ -94,6 +138,20 @@ public class AdminAcoesController : Controller
         // ✅ Filtro por tipo
         if (tipo != "todas")
             q = q.Where(a => a.tipo_acao == tipo);
+
+        // ✅ Filtro por datas (data_acao)
+        if (dataInicio.HasValue)
+        {
+            var inicio = dataInicio.Value.Date; // 00:00
+            q = q.Where(a => a.data_acao >= inicio);
+        }
+
+        if (dataFim.HasValue)
+        {
+            // Inclusivo até ao fim do dia
+            var fimExclusivo = dataFim.Value.Date.AddDays(1); // dia seguinte 00:00
+            q = q.Where(a => a.data_acao < fimExclusivo);
+        }
 
         // Admin filter (id/username/email)
         if (!string.IsNullOrWhiteSpace(admin))
@@ -111,9 +169,10 @@ public class AdminAcoesController : Controller
             else q = q.Where(a => false);
         }
 
-        // Ordenação (últimas primeiro)
-        // Se no teu model a coluna tiver outro nome, ajusta aqui.
-        q = q.OrderByDescending(a => a.data_acao);
+        // ✅ Ordenação
+        q = ordem == "antigas"
+            ? q.OrderBy(a => a.data_acao)
+            : q.OrderByDescending(a => a.data_acao);
 
         var lista = await q.ToListAsync();
 

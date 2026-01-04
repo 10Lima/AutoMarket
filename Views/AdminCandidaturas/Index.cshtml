@@ -7,53 +7,68 @@
     var utilizadorAtual = (ViewData["UtilizadorAtual"] as string) ?? "";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="admin-page">
+    <div class="admin-card">
 
-<form id="filtroForm"
-      method="get"
-      asp-controller="AdminCandidaturas"
-      asp-action="Lista"
-      data-ajax="true"
-      data-ajax-method="get"
-      data-ajax-mode="replace"
-      data-ajax-update="#candidaturasArea"
-      class="row g-2 align-items-end mb-3">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h1 class="page-title mb-0">@ViewData["Title"]</h1>
+        </div>
 
-    <div class="col-auto">
-        <label class="form-label" for="estado">Estado</label>
-        <select class="form-select" id="estado" name="estado">
-            <option value="pendente" selected="@(estadoAtual == "pendente")">Pendente</option>
-            <option value="aprovada" selected="@(estadoAtual == "aprovada")">Aprovada</option>
-            <option value="rejeitada" selected="@(estadoAtual == "rejeitada")">Rejeitada</option>
-            <option value="cancelada" selected="@(estadoAtual == "cancelada")">Cancelada</option>
-            <option value="todas" selected="@(estadoAtual == "todas")">Todas</option>
-        </select>
+        <!-- Filtros (visual card) -->
+        <div class="card card-soft mb-3">
+            <div class="card-body">
+                <form id="filtroForm"
+                      method="get"
+                      asp-controller="AdminCandidaturas"
+                      asp-action="Lista"
+                      data-ajax="true"
+                      data-ajax-method="get"
+                      data-ajax-mode="replace"
+                      data-ajax-update="#candidaturasArea"
+                      class="row g-3 align-items-end">
+
+                    <div class="col-auto">
+                        <label class="form-label" for="estado">Estado</label>
+                        <select class="form-select form-control-soft" id="estado" name="estado">
+                            <option value="pendente" selected="@(estadoAtual == "pendente")">Pendente</option>
+                            <option value="aprovada" selected="@(estadoAtual == "aprovada")">Aprovada</option>
+                            <option value="rejeitada" selected="@(estadoAtual == "rejeitada")">Rejeitada</option>
+                            <option value="cancelada" selected="@(estadoAtual == "cancelada")">Cancelada</option>
+                            <option value="todas" selected="@(estadoAtual == "todas")">Todas</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label" for="idCandidatura">ID Candidatura</label>
+                        <input class="form-control form-control-soft" id="idCandidatura" name="idCandidatura"
+                               value="@(idCandidaturaAtual?.ToString() ?? "")"
+                               inputmode="numeric"
+                               placeholder="ID" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="utilizador">Utilizador</label>
+                        <input class="form-control form-control-soft" id="utilizador" name="utilizador"
+                               value="@utilizadorAtual"
+                               placeholder="ID / username / email" />
+                    </div>
+
+                </form>
+            </div>
+        </div>
+
+        <!-- Área AJAX -->
+        <div id="candidaturasArea">
+            <partial name="_CandidaturasTable" model="Model" />
+        </div>
+
     </div>
-
-    <div class="col-md-2">
-        <label class="form-label" for="idCandidatura">ID Candidatura</label>
-        <input class="form-control" id="idCandidatura" name="idCandidatura"
-               value="@(idCandidaturaAtual?.ToString() ?? "")"
-               inputmode="numeric"
-               placeholder="ID" />
-    </div>
-
-    <div class="col-md-4">
-        <label class="form-label" for="utilizador">Utilizador</label>
-        <input class="form-control" id="utilizador" name="utilizador"
-               value="@utilizadorAtual"
-               placeholder="ID / username / email" />
-    </div>
-</form>
-
-<div id="candidaturasArea">
-    <partial name="_CandidaturasTable" model="Model" />
 </div>
 
-<!-- Modal Detalhes -->
+<!-- Modal Detalhes (só visual levemente mais "soft") -->
 <div class="modal fade" id="detalhesModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
+        <div class="modal-content modal-soft">
             <div class="modal-header">
                 <h5 class="modal-title">Detalhes da candidatura</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -69,7 +84,7 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-outline-dark-custom" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
@@ -80,6 +95,7 @@
 
 @section Scripts {
     <script>
+        // (SEU JS ORIGINAL — IGUAL)
         // ========================================
         // 1) INICIALIZAR MODAL DE MOTIVO (global)
         // ========================================
@@ -87,7 +103,6 @@
             const modalEl = document.getElementById('motivoModal');
             if (!modalEl) return;
 
-            // ✅ Bootstrap já carregado aqui
             const modal = new bootstrap.Modal(modalEl);
 
             const form = document.getElementById('motivoForm');
@@ -155,12 +170,10 @@
             let acaoAtual = null;
             let onSuccess = null;
 
-            // Contador de caracteres
             motivo.addEventListener('input', function () {
                 counter.textContent = (this.value || "").length;
             });
 
-            // ✅ Função global para abrir modal
             window.abrirMotivoAdmin = function (acao, url, idU, onOk) {
                 const config = presets[acao];
                 if (!config) {
@@ -206,7 +219,6 @@
                 modal.show();
             };
 
-            // Submit AJAX
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
 
@@ -247,7 +259,6 @@
                 });
             });
 
-            // Reset ao fechar
             modalEl.addEventListener('hidden.bs.modal', function () {
                 form.reset();
                 submitBtn.disabled = false;
@@ -298,7 +309,6 @@
 
             if (util) util.addEventListener('input', submitDebounced);
 
-            // Modal de detalhes
             const detalhesModal = document.getElementById('detalhesModal');
             const detalhesBody = document.getElementById('detalhesModalBody');
 
@@ -334,7 +344,6 @@
                 });
             }
 
-            // ✅ Botão REJEITAR (delegação)
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('.btn-rejeitar');
                 if (!btn) return;
@@ -347,7 +356,6 @@
                     else $(form).submit();
                 };
 
-                // ✅ Agora abrirMotivoAdmin está definido
                 abrirMotivoAdmin(
                     'rejeitar_vendedor',
                     '@Url.Action("Rejeitar", "AdminCandidaturas")?id=' + id + '&estado=' + encodeURIComponent(estadoVal),
@@ -358,3 +366,99 @@
         })();
     </script>
 }
+
+<style>
+    /* ===== FULL WIDTH (igual ao outro ecrã) ===== */
+    .admin-page {
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        background-color: #f5f5f5;
+        min-height: calc(100vh - 70px);
+        padding: 32px 20px;
+    }
+
+    /* ===== CARD PRINCIPAL ===== */
+    .admin-card {
+        background-color: #ffffff;
+        border-radius: 14px;
+        padding: 40px;
+        max-width: 1200px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    /* ===== TÍTULO ===== */
+    .page-title {
+        font-weight: 800;
+        color: #111;
+        letter-spacing: -0.3px;
+    }
+
+    /* ===== CARD SOFT ===== */
+    .card-soft {
+        border: 1px solid rgba(0,0,0,0.06);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+    }
+
+    /* ===== CONTROLS SOFT ===== */
+    .form-control-soft {
+        border-radius: 12px;
+        padding: 10px 12px;
+        border: 1px solid rgba(0,0,0,0.10);
+    }
+
+        .form-control-soft:focus {
+            border-color: rgba(0,0,0,0.35);
+            box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.08);
+        }
+
+    /* ✅ CORREÇÃO: texto do select não sobrepor a seta */
+    .form-select.form-control-soft {
+        padding-right: 2.75rem;
+        background-position: right .9rem center;
+        background-size: 16px 12px;
+    }
+
+
+    /* ===== BOTÕES PRETOS (reutilizáveis) ===== */
+    .btn-dark-custom {
+        background: #000;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+        .btn-dark-custom:hover {
+            background: #1b1b1b;
+            color: #fff;
+        }
+
+    .btn-outline-dark-custom {
+        border: 2px solid #000;
+        color: #000;
+        background: transparent;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 600;
+    }
+
+        .btn-outline-dark-custom:hover {
+            background: #000;
+            color: #fff;
+        }
+
+    /* ===== MODAL soft ===== */
+    .modal-soft {
+        border-radius: 14px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+        overflow: hidden;
+    }
+
+    @@media (max-width: 576px) {
+        .admin-card {
+            padding: 22px;
+        }
+    }
+</style>
