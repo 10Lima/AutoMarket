@@ -7,84 +7,153 @@
 
 @if (Model == null || Model.Count == 0)
 {
-    <div class="alert alert-info">Não existem candidaturas com os critérios selecionados.</div>
+    <div class="alert alert-info alert-soft">Não existem candidaturas com os critérios selecionados.</div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Utilizador</th>
-                    <th>Tipo</th>
-                    <th>NIF/NIPC</th>
-                    <th>Estado</th>
-                    <th>Data submissão</th>
-                    <th></th>
-                    <th class="text-end">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var c in Model)
-                {
-                    var username = usernames.ContainsKey(c.id_utilizador) ? usernames[c.id_utilizador] : $"#{c.id_utilizador}";
+    <div class="card card-soft">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 admin-table">
+                    <thead class="admin-thead">
+                        <tr>
+                            <th class="ps-3">ID</th>
+                            <th>Utilizador</th>
+                            <th>Tipo</th>
+                            <th>NIF/NIPC</th>
+                            <th>Estado</th>
+                            <th>Data submissão</th>
+                            <th></th>
+                            <th class="text-end pe-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model)
+                        {
+                            var username = usernames.ContainsKey(c.id_utilizador) ? usernames[c.id_utilizador] : $"#{c.id_utilizador}";
+                            var est = (c.estado ?? "").Trim().ToLowerInvariant();
 
-                    <tr>
-                        <td>@c.id_candidatura</td>
-                        <td>@username</td>
-                        <td>@c.tipo</td>
-                        <td>@c.NIF_NIPC</td>
-                        <td>
-                            <span class="badge bg-secondary">@c.estado</span>
-                        </td>
-                        <td>@c.data_submissao.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>
-                            <button type="button"
-                                    class="btn btn-sm btn-outline-primary"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#detalhesModal"
-                                    data-id="@c.id_candidatura">
-                                Detalhes
-                            </button>
-                        </td>
-
-                        <td class="text-end">
-                            @if (string.Equals(c.estado, "pendente", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <!-- Aprovar (AJAX) -->
-                                <form class="d-inline"
-                                      asp-controller="AdminCandidaturas"
-                                      asp-action="Aprovar"
-                                      method="post"
-                                      data-ajax="true"
-                                      data-ajax-method="post"
-                                      data-ajax-mode="replace"
-                                      data-ajax-update="#candidaturasArea">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@c.id_candidatura" />
-                                    <input type="hidden" name="estado" value="@estadoAtual" />
-                                    <button type="submit" class="btn btn-sm btn-success">
-                                        Aprovar
+                            <tr>
+                                <td class="ps-3 fw-semibold">@c.id_candidatura</td>
+                                <td>@username</td>
+                                <td>@c.tipo</td>
+                                <td>@c.NIF_NIPC</td>
+                                <td>
+                                    <span class="badge badge-state badge-@est">@c.estado</span>
+                                </td>
+                                <td>@c.data_submissao.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-dark-custom btn-soft"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#detalhesModal"
+                                            data-id="@c.id_candidatura">
+                                        Detalhes
                                     </button>
-                                </form>
+                                </td>
 
-                                <!-- ✅ Rejeitar: SEM data-bs-toggle (JS controla abertura) -->
-                                <button type="button"
-                                        class="btn btn-sm btn-danger ms-1 btn-rejeitar"
-                                        data-id="@c.id_candidatura"
-                                        data-estado="@estadoAtual">
-                                    Rejeitar
-                                </button>
-                            }
-                            else
-                            {
-                                <span class="text-muted">—</span>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                                <td class="text-end pe-3">
+                                    @if (string.Equals(c.estado, "pendente", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <form class="d-inline"
+                                              asp-controller="AdminCandidaturas"
+                                              asp-action="Aprovar"
+                                              method="post"
+                                              data-ajax="true"
+                                              data-ajax-method="post"
+                                              data-ajax-mode="replace"
+                                              data-ajax-update="#candidaturasArea">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@c.id_candidatura" />
+                                            <input type="hidden" name="estado" value="@estadoAtual" />
+                                            <button type="submit" class="btn btn-sm btn-success btn-soft">
+                                                Aprovar
+                                            </button>
+                                        </form>
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-danger ms-1 btn-rejeitar btn-soft"
+                                                data-id="@c.id_candidatura"
+                                                data-estado="@estadoAtual">
+                                            Rejeitar
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+
+    <style>
+        /* alert soft (caso não exista já na view principal) */
+        .alert-soft {
+            border-radius: 14px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 8px 22px rgba(0,0,0,0.04);
+        }
+
+        /* tabela */
+        .admin-thead th {
+            font-weight: 700;
+            color: #111;
+            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+            padding-top: 14px;
+            padding-bottom: 14px;
+            background: #fafafa;
+        }
+
+        .admin-table td {
+            border-top: 1px solid rgba(0,0,0,0.06) !important;
+            padding-top: 14px;
+            padding-bottom: 14px;
+        }
+
+        .btn-soft {
+            border-radius: 12px;
+            font-weight: 600;
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        /* badges por estado */
+        .badge-state {
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-weight: 650;
+            text-transform: capitalize;
+            display: inline-block;
+        }
+
+        .badge-pendente {
+            background: #facc15;
+            color: #111;
+        }
+
+        .badge-aprovada {
+            background: #16a34a;
+            color: #fff;
+        }
+
+        .badge-rejeitada {
+            background: #dc2626;
+            color: #fff;
+        }
+
+        .badge-cancelada {
+            background: #f97316;
+            color: #fff;
+        }
+
+        .badge- {
+            background: #111;
+            color: #fff;
+        }
+    </style>
 }

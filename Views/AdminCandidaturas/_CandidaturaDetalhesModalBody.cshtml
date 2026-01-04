@@ -7,68 +7,120 @@
     var nome = (ViewData["Nome"] as string) ?? "";
     var morada = ViewData["Morada"] as Morada;
     var contactos = ViewData["Contactos"] as List<Utilizador_Contacto> ?? new List<Utilizador_Contacto>();
+
+    var est = (Model.estado ?? "").Trim().ToLowerInvariant();
 }
 
-<div class="mb-3">
-    <h5 class="mb-1">@(!string.IsNullOrWhiteSpace(username) ? username : $"#@Model.id_utilizador")</h5>
-    <div class="text-muted">@email</div>
-    <div>@nome</div>
+<div class="card card-soft mb-3">
+    <div class="card-body">
+        <div class="d-flex flex-column gap-1">
+            <h5 class="mb-0">@(!string.IsNullOrWhiteSpace(username) ? username : $"#@Model.id_utilizador")</h5>
+            <div class="text-muted">@email</div>
+            <div>@nome</div>
+        </div>
+    </div>
 </div>
-
-<hr />
 
 <div class="row g-3">
     <div class="col-md-6">
-        <h6>Dados da candidatura</h6>
-        <dl class="row mb-0">
-            <dt class="col-5">Tipo</dt>
-            <dd class="col-7">@Model.tipo</dd>
+        <div class="card card-soft h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3">Dados da candidatura</h6>
 
-            <dt class="col-5">NIF/NIPC</dt>
-            <dd class="col-7">@Model.NIF_NIPC</dd>
+                <dl class="row mb-0">
+                    <dt class="col-5">Tipo</dt>
+                    <dd class="col-7">@Model.tipo</dd>
 
-            <dt class="col-5">Estado</dt>
-            <dd class="col-7">@Model.estado</dd>
+                    <dt class="col-5">NIF/NIPC</dt>
+                    <dd class="col-7">@Model.NIF_NIPC</dd>
 
-            <dt class="col-5">Data submissão</dt>
-            <dd class="col-7">@Model.data_submissao</dd>
-        </dl>
+                    <dt class="col-5">Estado</dt>
+                    <dd class="col-7">
+                        <span class="badge badge-state badge-@est">@Model.estado</span>
+                    </dd>
+
+                    <dt class="col-5">Data submissão</dt>
+                    <dd class="col-7">@Model.data_submissao.ToString("dd/MM/yyyy HH:mm")</dd>
+                </dl>
+            </div>
+        </div>
     </div>
 
     <div class="col-md-6">
-        <h6>Contactos</h6>
+        <div class="card card-soft h-100">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3">Contactos</h6>
 
-        @if (contactos.Count == 0)
-        {
-            <div class="text-muted">Sem contactos registados.</div>
-        }
-        else
-        {
-            <ul class="mb-0">
-                @foreach (var c in contactos)
+                @if (contactos.Count == 0)
                 {
-                    <li><strong>@c.tipo</strong>: @c.valor</li>
+                    <div class="text-muted">Sem contactos registados.</div>
                 }
-            </ul>
-        }
-
-        <hr />
-
-        <h6>Morada</h6>
-        @if (morada == null)
-        {
-            <div class="text-muted">Sem morada registada.</div>
-        }
-        else
-        {
-            <div>
-                @morada.endereco
-                @if (!string.IsNullOrWhiteSpace(morada.numero))
+                else
                 {
+                    <ul class="mb-3 detalhes-list">
+                        @foreach (var c in contactos)
+                        {
+                            <li><strong>@c.tipo</strong>: @c.valor</li>
+                        }
+                    </ul>
+                }
+
+                <hr />
+
+                <h6 class="fw-bold mb-3">Morada</h6>
+                @if (morada == null)
+                {
+                    <div class="text-muted">Sem morada registada.</div>
+                }
+                else
+                {
+                    <div>@morada.endereco@if (!string.IsNullOrWhiteSpace(morada.numero)) {
                     <span>, @morada.numero</span>
                 }
+</div>
+                <div class="text-muted">@morada.cod_postal</div>
+                                }
             </div>
-            <div>@morada.cod_postal</div>
-        }
+        </div>
     </div>
 </div>
+
+<style>
+    .detalhes-list {
+        padding-left: 1.1rem;
+        margin-bottom: 0;
+    }
+
+    .badge-state {
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-weight: 650;
+        text-transform: capitalize;
+        display: inline-block;
+    }
+
+    .badge-pendente {
+        background: #facc15;
+        color: #111;
+    }
+
+    .badge-aprovada {
+        background: #16a34a;
+        color: #fff;
+    }
+
+    .badge-rejeitada {
+        background: #dc2626;
+        color: #fff;
+    }
+
+    .badge-cancelada {
+        background: #f97316;
+        color: #fff;
+    }
+
+    .badge- {
+        background: #111;
+        color: #fff;
+    }
+</style>

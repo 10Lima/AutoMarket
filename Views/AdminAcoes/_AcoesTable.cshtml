@@ -6,38 +6,130 @@
 
 @if (Model.Count == 0)
 {
-    <div class="alert alert-info">Sem ações para os filtros atuais.</div>
+    <div class="alert alert-info alert-soft">Sem ações para os filtros atuais.</div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Tipo</th>
-                    <th>Admin</th>
-                    <th>Utilizador</th>
-                    <th>ID Candidatura</th>
-                    <th>Motivo</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var a in Model)
-                {
-                    usernames.TryGetValue(a.id_admin, out var adminU);
-                    usernames.TryGetValue(a.id_utilizador, out var userU);
+    <div class="card card-soft">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 admin-table">
+                    <thead class="admin-thead">
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Admin</th>
+                            <th>Utilizador</th>
+                            <th>ID Candidatura</th>
+                            <th>Motivo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in Model)
+                        {
+                            usernames.TryGetValue(a.id_admin, out var adminU);
+                            usernames.TryGetValue(a.id_utilizador, out var userU);
 
-                    <tr>
-                        <td>@a.data_acao</td>
-                        <td><span class="badge bg-secondary">@a.tipo_acao</span></td>
-                        <td>@(!string.IsNullOrWhiteSpace(adminU) ? adminU : $"#{a.id_admin}")</td>
-                        <td>@(!string.IsNullOrWhiteSpace(userU) ? userU : $"#{a.id_utilizador}")</td>
-                        <td>@(a.id_candidatura.HasValue? a.id_candidatura.Value.ToString() : "-")</td>
-                        <td>@(string.IsNullOrWhiteSpace(a.motivo) ? "-" : a.motivo)</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                            var tipo = (a.tipo_acao ?? "").Trim().ToLowerInvariant();
+
+                            <tr>
+                                <td>@a.data_acao</td>
+                                <td>
+                                    <span class="badge badge-state badge-@tipo">@a.tipo_acao</span>
+                                </td>
+                                <td>@(!string.IsNullOrWhiteSpace(adminU) ? adminU : $"#{a.id_admin}")</td>
+                                <td>@(!string.IsNullOrWhiteSpace(userU) ? userU : $"#{a.id_utilizador}")</td>
+                                <td>@(a.id_candidatura.HasValue? a.id_candidatura.Value.ToString() : "-")</td>
+                                <td>@(string.IsNullOrWhiteSpace(a.motivo) ? "-" : a.motivo)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+
+    <style>
+        .alert-soft {
+            border-radius: 14px;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 8px 22px rgba(0,0,0,0.04);
+        }
+
+        /* cabeçalhos centrados */
+        .admin-thead th {
+            font-weight: 700;
+            color: #111;
+            background: #fafafa;
+            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+            text-align: center;
+            padding: 16px 18px;
+        }
+
+        /* espaçamento geral */
+        .admin-table th,
+        .admin-table td {
+            padding-left: 18px;
+            padding-right: 18px;
+        }
+
+        .admin-table td {
+            border-top: 1px solid rgba(0,0,0,0.06) !important;
+            padding-top: 14px;
+            padding-bottom: 14px;
+        }
+
+            /* alinhamentos por coluna */
+            .admin-table td:nth-child(1),
+            .admin-table td:nth-child(2),
+            .admin-table td:nth-child(5) {
+                text-align: center;
+                white-space: nowrap;
+            }
+
+            .admin-table td:nth-child(3),
+            .admin-table td:nth-child(4),
+            .admin-table td:nth-child(6) {
+                text-align: left;
+            }
+
+            .admin-table td:nth-child(6) {
+                min-width: 320px;
+                line-height: 1.45;
+            }
+
+        /* badges */
+        .badge-state {
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-weight: 650;
+            display: inline-block;
+            color: #fff;
+            background: #6b7280;
+        }
+
+        .badge-aprovar_vendedor {
+            background: #16a34a;
+        }
+
+        .badge-rejeitar_vendedor {
+            background: #dc2626;
+        }
+
+        .badge-bloquear {
+            background: #111;
+        }
+
+        .badge-desbloquear {
+            background: #0ea5e9;
+        }
+
+        .badge-remover_admin {
+            background: #f97316;
+        }
+
+        .badge-recuperar_admin {
+            background: #8b5cf6;
+        }
+    </style>
 }
