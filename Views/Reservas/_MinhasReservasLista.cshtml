@@ -1,0 +1,140 @@
+﻿@model IEnumerable<AutoMarket.Models.Market.Reserva>
+
+@{
+    var lista = Model ?? Enumerable.Empty<AutoMarket.Models.Market.Reserva>();
+
+    string Badge(string? e) => (e ?? "").ToLowerInvariant() switch
+    {
+        "ativa" => "bg-success",
+        "expirada" => "bg-warning text-dark",
+        "cancelada" => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    string Label(string? e) => (e ?? "").ToLowerInvariant() switch
+    {
+        "ativa" => "Ativa",
+        "expirada" => "Expirada",
+        "cancelada" => "Cancelada",
+        _ => e ?? "—"
+    };
+
+    string? PrimeiraImagem(AutoMarket.Models.Market.Reserva r)
+        => r.id_anuncioNavigation?.Anuncio_Imagem?
+            .OrderByDescending(x => x.principal)
+            .ThenBy(x => x.ordem ?? 9999)
+            .Select(x => x.id_imagem_anuncioNavigation?.url)
+            .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+}
+
+@if (!lista.Any())
+{
+    <div class="alert alert-light border text-center py-4 mb-0">
+        <i class="bi bi-inbox" style="font-size: 2.5rem; color: #ccc;"></i>
+        <p class="mt-2 mb-0 text-muted">Não tens reservas com estes filtros.</p>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Anúncio</th>
+                    <th class="text-center" style="width:170px;">Estado</th>
+                    <th class="text-center" style="width:200px;">Data Reserva</th>
+                    <th class="text-center" style="width:200px;">Expira</th>
+                    <th class="text-end" style="width:260px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in lista)
+                {
+                    var a = r.id_anuncioNavigation;
+                    var img = PrimeiraImagem(r);
+                    var dataRes = r.data_reserva.ToLocalTime();
+                    var dataExp = r.data_expiracao?.ToLocalTime();
+
+                    <tr>
+                        <td style="min-width:360px;">
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrWhiteSpace(img))
+                                {
+                                    <img src="@img" alt="Imagem do anúncio" class="am-ops-img" />
+                                }
+                                else
+                                {
+                                    <div class="am-ops-img-placeholder">
+                                        <i class="bi bi-image"></i>
+                                    </div>
+                                }
+
+                                <div>
+                                    <div class="fw-semibold">
+                                        <a asp-controller="Anuncios" asp-action="Detalhes" asp-route-id="@(a?.id_anuncio ?? 0)"
+                                           class="text-decoration-none">
+                                            @(a?.titulo ?? "—")
+                                        </a>
+                                    </div>
+                                    <div class="text-muted small">
+                                        @(a?.preco.HasValue == true ? $"{a.preco.Value:N0} €" : "—")
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="text-center">
+                            <span class="badge @Badge(r.estado)"
+                                  style="min-width:130px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;font-weight:650;">
+                                @Label(r.estado)
+                            </span>
+                        </td>
+
+                        <td class="text-center">
+                            <div class="small">@dataRes.ToString("dd/MM/yyyy")</div>
+                            <div class="small text-muted">@dataRes.ToString("HH:mm")</div>
+                        </td>
+
+                        <td class="text-center">
+                            @if (dataExp.HasValue)
+                            {
+                                <div class="small">@dataExp.Value.ToString("dd/MM/yyyy")</div>
+                                <div class="small text-muted">@dataExp.Value.ToString("HH:mm")</div>
+                            }
+                            else
+                            {
+                                <div class="small text-muted">—</div>
+                            }
+                        </td>
+
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-2 am-ops-actions">
+                                <a asp-controller="Anuncios" asp-action="Detalhes" asp-route-id="@(a?.id_anuncio ?? 0)"
+                                   class="btn btn-sm btn-outline-dark">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
+
+                                @if (string.Equals(r.estado, "ativa", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <form asp-controller="Anuncios" asp-action="CancelarReserva" method="post"
+                                          data-ajax="true"
+                                          data-ajax-method="POST"
+                                          data-ajax-update="#reservasListaArea"
+                                          data-ajax-mode="replace"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Cancelar esta reserva?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="idReserva" value="@r.id_reserva" />
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">
+                                            <i class="bi bi-x-circle"></i> Cancelar
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

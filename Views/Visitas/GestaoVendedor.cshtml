@@ -1,14 +1,59 @@
-@using AutoMarket.Models.Market
-@model List<Visita>
+Ôªø@{
+    ViewData["Title"] = "Gest√£o de Visitas";
 
-@{
-    ViewData["Title"] = "Gest„o de Visitas";
+    var cAg = (int)(ViewBag.CountAgendada ?? 0);
+    var cPe = (int)(ViewBag.CountPendente ?? 0);
+    var cRej = (int)(ViewBag.CountRejeitada ?? 0);
+    var cCan = (int)(ViewBag.CountCancelada ?? 0);
+    var cReal = (int)(ViewBag.CountRealizada ?? 0);
+    var cAll = (int)(ViewBag.CountTodos ?? (cAg + cPe + cRej + cCan + cReal));
+
+    var defaultEstado = (string)(ViewBag.DefaultEstado ?? "agendada");
+    var defaultOrdem = (string)(ViewBag.DefaultOrdem ?? "data_proxima");
 }
 
-<div class="container mt-3">
+<div class="container mt-3 am-scale-lg">
 
-    <h3 class="mb-3">Gest„o de Visitas</h3>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Gest√£o de Visitas</h2>
+    </div>
 
+    <!-- Tabs (como em Anuncios/Meus e MinhasOperacoes) -->
+    <ul class="nav nav-tabs am-tabs mb-3" id="visitasTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" type="button" data-estado="agendada">
+                Agendada <span class="am-tab-count">(@cAg)</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" type="button" data-estado="pendente">
+                Pendente <span class="am-tab-count">(@cPe)</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" type="button" data-estado="realizada">
+                Realizada <span class="am-tab-count">(@cReal)</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" type="button" data-estado="rejeitada">
+                Rejeitada <span class="am-tab-count">(@cRej)</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" type="button" data-estado="cancelada">
+                Cancelada <span class="am-tab-count">(@cCan)</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" type="button" data-estado="todos">
+                Todos <span class="am-tab-count">(@cAll)</span>
+            </button>
+        </li>
+    </ul>
+
+
+    <!-- Filtros (AJAX) -->
     <form id="filtrosVisitas"
           asp-controller="Visitas"
           asp-action="ListaVisitas"
@@ -17,50 +62,68 @@
           data-ajax-method="GET"
           data-ajax-update="#listaVisitas"
           data-ajax-mode="replace"
-          class="row g-2 mb-3">
+          data-ajax-loading="#visitasLoading"
+          class="row g-2 align-items-end mb-3">
 
-        <div class="col-12 col-md-4">
-            <label class="form-label mb-1">Estado</label>
-            <select class="form-select" name="estado" id="estadoSel">
-                <option value="pendente">Pendente</option>
-                <option value="agendada">Agendada</option>
-                <option value="rejeitada">Rejeitada</option>
-                <option value="cancelada">Cancelada</option>
-                <option value="realizada">Realizada</option>
-                <option value="todos">Todos</option>
-            </select>
-        </div>
+        <input type="hidden" name="estado" id="estadoVal" value="@defaultEstado" />
 
         <div class="col-12 col-md-5">
-            <label class="form-label mb-1">OrdenaÁ„o</label>
+            <label class="form-label mb-1">Ordena√ß√£o</label>
             <select class="form-select" name="ordem" id="ordemSel">
-                <option value="data_proxima">Data agendada mais prÛxima</option>
-                <option value="data_longe">Data agendada mais distante</option>
-                <option value="id_desc">Mais recente</option>
-                <option value="id_asc">Mais antiga</option>
+                <option value="data_proxima" selected="@(defaultOrdem == "data_proxima")">Data agendada mais pr√≥xima</option>
+                <option value="data_longe" selected="@(defaultOrdem == "data_longe")">Data agendada mais distante</option>
+                <option value="id_desc" selected="@(defaultOrdem == "id_desc")">Mais recente</option>
+                <option value="id_asc" selected="@(defaultOrdem == "id_asc")">Mais antiga</option>
             </select>
         </div>
     </form>
 
+    <div id="visitasLoading" class="alert alert-secondary d-none">
+        A carregar visitas‚Ä¶
+    </div>
+
     <div id="listaVisitas">
-        <div class="alert alert-secondary">A carregar visitasÖ</div>
+        <div class="alert alert-secondary">A carregar visitas‚Ä¶</div>
     </div>
 
 </div>
 
+@* ‚úÖ Modal reutiliz√°vel para info do utilizador *@
+@await Html.PartialAsync("_UserInfoModal")
+
 @section Scripts {
-<script>
-    (() => {
-        const f = document.getElementById("filtrosVisitas");
-        const e = document.getElementById("estadoSel");
-        const o = document.getElementById("ordemSel");
+    <script>
+        (() => {
+            const form = document.getElementById("filtrosVisitas");
+            const estadoVal = document.getElementById("estadoVal");
+            const ordemSel = document.getElementById("ordemSel");
+            const tabs = document.getElementById("visitasTabs");
 
-        const submit = () => f.requestSubmit();
+            const setActive = (estado) => {
+                tabs.querySelectorAll(".nav-link").forEach(b => {
+                    b.classList.toggle("active", b.dataset.estado === estado);
+                });
+            };
 
-        e.addEventListener("change", submit);
-        o.addEventListener("change", submit);
+            const submit = () => form.requestSubmit();
 
-        document.addEventListener("DOMContentLoaded", submit);
-    })();
-</script>
+            tabs.addEventListener("click", (ev) => {
+                const btn = ev.target.closest(".nav-link");
+                if (!btn) return;
+
+                const st = btn.dataset.estado;
+                estadoVal.value = st;
+                setActive(st);
+                submit();
+            });
+
+            ordemSel.addEventListener("change", submit);
+
+            document.addEventListener("DOMContentLoaded", () => {
+                // Default: Agendada
+                setActive(estadoVal.value || "agendada");
+                submit();
+            });
+        })();
+    </script>
 }

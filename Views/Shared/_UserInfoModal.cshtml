@@ -1,0 +1,91 @@
+﻿<div class="modal fade" id="userInfoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userInfoModalTitle">Dados do utilizador</h5>
+
+                @* BS5 *@
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+
+                @* BS4 fallback (se estiveres em BS4) *@
+                <button type="button" class="close d-none" data-dismiss="modal" aria-label="Fechar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body" id="userInfoModalBody">
+                <div class="text-muted">A carregar…</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        // Evita registar o handler 2x (se a partial for incluída mais do que uma vez)
+        if (window.__amUserInfoModalBound) return;
+        window.__amUserInfoModalBound = true;
+
+        const modalEl = document.getElementById("userInfoModal");
+        const bodyEl  = document.getElementById("userInfoModalBody");
+        const titleEl = document.getElementById("userInfoModalTitle");
+
+        if (!modalEl || !bodyEl || !titleEl) return;
+
+        function showModal() {
+            // Bootstrap 5
+            if (window.bootstrap && bootstrap.Modal) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                return true;
+            }
+            // Bootstrap 4 (jQuery plugin)
+            if (window.jQuery && window.jQuery(modalEl).modal) {
+                window.jQuery(modalEl).modal("show");
+                return true;
+            }
+
+            // Fallback mínimo (mostra "à força" se não houver JS do bootstrap)
+            modalEl.classList.add("show");
+            modalEl.style.display = "block";
+            modalEl.removeAttribute("aria-hidden");
+            document.body.classList.add("modal-open");
+            return true;
+        }
+
+        document.addEventListener("click", async (ev) => {
+            const a = ev.target.closest(".js-userinfo");
+            if (!a) return;
+
+            ev.preventDefault();
+
+            const id = a.getAttribute("data-userid");
+            if (!id) return;
+
+            titleEl.textContent = "Dados do utilizador";
+            bodyEl.innerHTML = `<div class="text-muted">A carregar…</div>`;
+            showModal();
+
+            try {
+                const url = `@Url.Action("InfoCard", "Utilizadores")?id=${encodeURIComponent(id)}`;
+                const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+
+                if (!resp.ok) {
+                    bodyEl.innerHTML = `<div class="alert alert-light border mb-0">Não foi possível obter os dados.</div>`;
+                    return;
+                }
+
+                bodyEl.innerHTML = await resp.text();
+
+                const root = bodyEl.querySelector("[data-username]");
+                const uname = root ? (root.getAttribute("data-username") || "") : "";
+
+                titleEl.textContent = (uname.trim().length > 0)
+                    ? `Dados do utilizador — ${uname}`
+                    : "Dados do utilizador";
+
+            } catch {
+                bodyEl.innerHTML = `<div class="alert alert-light border mb-0">Erro ao carregar.</div>`;
+            }
+        });
+    })();
+</script>

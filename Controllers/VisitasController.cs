@@ -241,15 +241,16 @@ WHERE estado = N'agendada'
             return PartialView("_AgendarVisita");
         }
 
-        // utilizador só pode ter 1 visita em pendente OU agendada
+        // ✅ CORREÇÃO: só bloquear se já existir visita pendente/agendada PARA ESTE ANÚNCIO
         var jaTem = await _marketDb.Visita
             .AsNoTracking()
             .AnyAsync(v => v.id_utilizador == idUtil.Value
-                       && (v.estado == "pendente" || v.estado == "agendada"));
+                   && v.id_anuncio == idAnuncio
+                   && (v.estado == "pendente" || v.estado == "agendada"));
 
         if (jaTem)
         {
-            ModelState.AddModelError("", "Só podes ter uma visita pendente ou agendada de cada vez.");
+            ModelState.AddModelError("", "Já tens uma visita pendente ou agendada para este anúncio.");
             return PartialView("_AgendarVisita");
         }
 
@@ -288,17 +289,18 @@ WHERE estado = N'agendada'
         }
         catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx && (sqlEx.Number == 2601 || sqlEx.Number == 2627))
         {
-            ModelState.AddModelError("", "Só podes ter uma visita pendente ou agendada de cada vez.");
+            ModelState.AddModelError("", "Já tens uma visita pendente ou agendada para este anúncio.");
             return PartialView("_AgendarVisita");
         }
 
+        ViewBag.IdVisita = visita.id_visita;
         ViewBag.IdAnuncio = idAnuncio;
         ViewBag.DataAgendada = local.ToString("dd/MM/yyyy HH:mm");
         return PartialView("_AgendarVisitaSucesso");
     }
 
     // ============================================================
-    // VENDEDOR: view base (filtros + container). Lista vem por AJAX.
+    // VENDEDOR: Página Gestão de Visitas (tabs + contadores)
     // ============================================================
     [HttpGet]
     public async Task<IActionResult> GestaoVendedor()
@@ -309,17 +311,38 @@ WHERE estado = N'agendada'
         var isVendedor = await _marketDb.Vendedor.AnyAsync(v => v.id_utilizador == idUtil.Value);
         if (!isVendedor) return Forbid();
 
-        // ✅ manter estado realizado "em dia"
-        await AtualizarRealizadasAsync(idVendedor: idUtil.Value);
+        // Atualiza automaticamente "realizada" (já tens isto no controller)
+        await AtualizarRealizadasAsync(idUtil.Value);
+
+        // Contadores por estado (para as tabs)
+        var counts = await _marketDb.Visita
+            .AsNoTracking()
+            .Where(v => v.id_anuncioNavigation.id_vendedor == idUtil.Value)
+            .GroupBy(v => (v.estado ?? "").Trim().ToLower())
+            .Select(g => new { estado = g.Key, total = g.Count() })
+            .ToListAsync();
+
+        int Count(string st) => counts.FirstOrDefault(x => x.estado == st)?.total ?? 0;
+
+        ViewBag.CountAgendada = Count("agendada");
+        ViewBag.CountPendente = Count("pendente");
+        ViewBag.CountRejeitada = Count("rejeitada");
+        ViewBag.CountCancelada = Count("cancelada");
+        ViewBag.CountRealizada = Count("realizada");
+        ViewBag.CountTodos = ViewBag.CountAgendada + ViewBag.CountPendente + ViewBag.CountRejeitada + ViewBag.CountCancelada + ViewBag.CountRealizada;
+
+        // Defaults para a UI
+        ViewBag.DefaultEstado = "agendada";
+        ViewBag.DefaultOrdem = "data_proxima";
 
         return View();
     }
 
     // ============================================================
-    // VENDEDOR: partial lista (AJAX) com filtros/ordenação
+    // LISTA (AJAX): /Visitas/ListaVisitas
     // ============================================================
     [HttpGet]
-    public async Task<IActionResult> ListaVisitas(string estado = "pendente", string ordem = "data_proxima")
+    public async Task<IActionResult> ListaVisitas(string estado = "agendada", string ordem = "data_proxima")
     {
         var idUtil = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtil == null) return Unauthorized();
@@ -327,33 +350,43 @@ WHERE estado = N'agendada'
         var isVendedor = await _marketDb.Vendedor.AnyAsync(v => v.id_utilizador == idUtil.Value);
         if (!isVendedor) return Forbid();
 
-        // ✅ manter estado realizado "em dia"
-        await AtualizarRealizadasAsync(idVendedor: idUtil.Value);
+        estado = (estado ?? "agendada").Trim().ToLowerInvariant();
+        ordem = (ordem ?? "data_proxima").Trim().ToLowerInvariant();
 
-        IQueryable<Visita> q = _marketDb.Visita
+        // valida estado
+        if (estado is not ("pendente" or "agendada" or "rejeitada" or "cancelada" or "realizada" or "todos"))
+            estado = "agendada";
+
+        // ✅ CORREÇÃO: Incluir navegação completa do Comprador → Utilizador
+        var query = _marketDb.Visita
             .AsNoTracking()
             .Include(v => v.id_anuncioNavigation)
                 .ThenInclude(a => a.Anuncio_Imagem)
                     .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
-            .Where(v => v.id_anuncioNavigation.id_vendedor == idUtil.Value);
+            .Include(v => v.id_utilizadorNavigation)           // ✅ Comprador
+                .ThenInclude(c => c.id_utilizadorNavigation)   // ✅ Utilizador
+            .Where(v => v.id_anuncioNavigation.id_vendedor == idUtil.Value)
+            .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(estado) && !estado.Equals("todos", StringComparison.OrdinalIgnoreCase))
-            q = q.Where(v => v.estado == estado);
+        if (estado != "todos")
+            query = query.Where(v => v.estado == estado);
 
-        q = ordem switch
+        query = ordem switch
         {
-            "id_asc" => q.OrderBy(v => v.id_visita),
-            "id_desc" => q.OrderByDescending(v => v.id_visita),
-            "data_longe" => q.OrderByDescending(v => v.data_visita),
-            _ => q.OrderBy(v => v.data_visita), // data_proxima
+            "data_longe" => query.OrderByDescending(v => v.data_visita),
+            "id_asc" => query.OrderBy(v => v.id_visita),
+            "id_desc" => query.OrderByDescending(v => v.id_visita),
+            _ => query.OrderBy(v => v.data_visita) // data_proxima
         };
+
+        var visitas = await query.ToListAsync();
 
         ViewBag.Estado = estado;
         ViewBag.Ordem = ordem;
 
-        var lista = await q.ToListAsync();
-        return PartialView("_ListaVisitas", lista);
+        return PartialView("_ListaVisitas", visitas);
     }
+
 
     // ============================================================
     // VENDEDOR: Aceitar (pendente -> agendada) + refresh partial
@@ -532,41 +565,49 @@ WHERE estado = N'agendada'
     // ============================================================
     // COMPRADOR: lista AJAX das minhas visitas (MinhasOperacoes)
     // ============================================================
+    [Authorize]
     [HttpGet]
-    public async Task<IActionResult> ListaMinhasVisitas(string estado = "todos", string ordem = "data_proxima")
+    public async Task<IActionResult> ListaMinhasVisitas(string estado = "todos", string ordem = "recent")
     {
         var idUtil = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtil == null) return Unauthorized();
 
-        var isComprador = await _marketDb.Comprador.AnyAsync(c => c.id_utilizador == idUtil.Value);
-        if (!isComprador) return Forbid();
-
-        await AtualizarRealizadasAsync(idComprador: idUtil.Value);
-
-        IQueryable<Visita> q = _marketDb.Visita
-            .AsNoTracking()
+        var q = _marketDb.Visita
             .Include(v => v.id_anuncioNavigation)
                 .ThenInclude(a => a.Anuncio_Imagem)
                     .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
-            .Where(v => v.id_utilizador == idUtil.Value);
+            .Where(v => v.id_utilizador == idUtil.Value)
+            .AsNoTracking();
 
-        if (!string.IsNullOrWhiteSpace(estado) && !estado.Equals("todos", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(estado, "todos", StringComparison.OrdinalIgnoreCase))
             q = q.Where(v => v.estado == estado);
 
-        q = ordem switch
+        // ✅ Ordenação
+        q = (ordem ?? "recent").ToLowerInvariant() switch
         {
-            "id_asc" => q.OrderBy(v => v.id_visita),
-            "id_desc" => q.OrderByDescending(v => v.id_visita),
+            // “Mais recentes / antigas” por criação (id) — sem mostrar ids na UI
+            "recent" => q.OrderByDescending(v => v.id_visita),
+            "oldest" => q.OrderBy(v => v.id_visita),
+
+            // “Data visita” mais próxima / distante
+            "data_proxima" => q.OrderBy(v => v.data_visita),
             "data_longe" => q.OrderByDescending(v => v.data_visita),
-            _ => q.OrderBy(v => v.data_visita), // data_proxima
+
+            // compatibilidade caso ainda existam links antigos
+            "id_desc" => q.OrderByDescending(v => v.id_visita),
+            "id_asc" => q.OrderBy(v => v.id_visita),
+
+            _ => q.OrderByDescending(v => v.id_visita)
         };
+
+        var visitas = await q.ToListAsync();
 
         ViewBag.Estado = estado;
         ViewBag.Ordem = ordem;
 
-        var lista = await q.ToListAsync();
-        return PartialView("_ListaMinhasVisitas", lista);
+        return PartialView("_ListaMinhasVisitas", visitas);
     }
+
 
     // ============================================================
     // COMPRADOR: cancelar visita (qualquer estado exceto realizada)
@@ -625,4 +666,63 @@ WHERE estado = N'agendada'
 
         return RedirectToAction("MinhasOperacoes", "Anuncios");
     }
+
+    // ============================================================
+    // COMPRADOR: cancelar visita a partir do Detalhe do anúncio (slot)
+    // ============================================================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelarDetalhe(long idVisita, int idAnuncio)
+    {
+        var idUtil = await _currentUser.GetMarketUserIdAsync(User);
+        if (idUtil == null) return Unauthorized();
+
+        var isComprador = await _marketDb.Comprador.AnyAsync(c => c.id_utilizador == idUtil.Value);
+        if (!isComprador) return Forbid();
+
+        await AtualizarRealizadasAsync(idComprador: idUtil.Value);
+
+        var visita = await _marketDb.Visita
+            .Include(v => v.id_anuncioNavigation)
+            .FirstOrDefaultAsync(v => v.id_visita == idVisita);
+
+        if (visita == null) return NotFound();
+
+        if (visita.id_utilizador != idUtil.Value) return Forbid();
+        if (visita.id_anuncio != idAnuncio) return BadRequest();
+        if (visita.estado == "realizada") return BadRequest();
+
+        if (visita.estado != "cancelada")
+        {
+            visita.estado = "cancelada";
+            await _marketDb.SaveChangesAsync();
+
+            // Notificação aos dois (igual ao CancelarComprador)
+            var payload = new
+            {
+                v = 1,
+                id_visita = visita.id_visita,
+                id_anuncio = visita.id_anuncio,
+                data_visita = visita.data_visita
+            };
+
+            await CriarNotificacaoParaAmbosAsync(
+                idComprador: visita.id_utilizador,
+                idVendedor: visita.id_anuncioNavigation.id_vendedor,
+                tipo: "visita_cancelada",
+                tituloComprador: "Visita cancelada",
+                textoComprador: "Cancelaste a visita.",
+                tituloVendedor: "Visita cancelada",
+                textoVendedor: "A visita foi cancelada pelo comprador.",
+                payload: payload
+            );
+
+            await _marketDb.SaveChangesAsync();
+        }
+
+        // devolve o slot "fechado" (botão Agendar Visita)
+        ViewBag.IdAnuncio = idAnuncio;
+        return PartialView("_AgendarSlotFechadoDetalhe");
+    }
+
 }

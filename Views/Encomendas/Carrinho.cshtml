@@ -1,13 +1,37 @@
+@using AutoMarket.Models.Market
 @model IEnumerable<AutoMarket.Models.Market.Encomenda>
 
 @{
     ViewData["Title"] = "Carrinho";
+
+    var lista = Model ?? Enumerable.Empty<Encomenda>();
+
+    string? PrimeiraImagem(Encomenda e) =>
+        e.id_anuncioNavigation?.Anuncio_Imagem?
+            .OrderByDescending(x => x.principal)
+            .ThenBy(x => x.ordem ?? 9999)
+            .Select(x => x.id_imagem_anuncioNavigation?.url)
+            .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+
+    decimal total = lista.Sum(e => e.id_anuncioNavigation?.preco ?? 0m);
 }
 
-<div class="container mt-3">
+<div class="container mt-3 am-scale-lg">
+
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Carrinho</h2>
-        <a class="btn btn-outline-secondary" asp-controller="Anuncios" asp-action="Carros">
+        <div>
+            <h2 class="mb-0">Carrinho</h2>
+            @if (lista.Any())
+            {
+                <div class="text-muted mt-1">
+                    Total: <span class="fw-semibold">@total.ToString("N2") €</span>
+                </div>
+            }
+        </div>
+
+        <a class="btn btn-secondary"
+           asp-controller="Anuncios"
+           asp-action="Carros">
             Voltar aos carros
         </a>
     </div>
@@ -28,68 +52,98 @@
         </div>
     }
 
-    @if (!Model.Any())
+    @if (!lista.Any())
     {
-        <div class="alert alert-light border mb-0">
-            <i class="bi bi-cart-x"></i> Não existem encomendas pendentes.
+        <div class="alert alert-light border text-center py-4 mb-0">
+            <i class="bi bi-cart-x" style="font-size: 2.5rem; color: #ccc;"></i>
+            <p class="mt-2 mb-0 text-muted">Não existem encomendas pendentes.</p>
         </div>
     }
     else
     {
-        <div class="card">
-            <div class="card-header bg-light">
-                <strong>Encomendas pendentes</strong>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Anúncio</th>
-                            <th style="width:170px;">Data</th>
-                            <th style="width:200px;" class="text-end">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var e in Model)
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 am-scale-lg">
+                <thead class="table-light">
+                    <tr>
+                        <th style="min-width:380px;">Anúncio</th>
+                        <th class="text-center" style="width:210px;">Data</th>
+                        <th class="text-end" style="width:420px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in lista)
                     {
-                        var titulo = e.id_anuncioNavigation?.titulo ?? $"Anúncio #{e.id_anuncio}";
-                        var preco = e.id_anuncioNavigation?.preco;
+                        var anuncio = e.id_anuncioNavigation;
+                        var titulo = anuncio?.titulo ?? $"Anúncio #{e.id_anuncio}";
+                        var preco = anuncio?.preco;
+                        var img = PrimeiraImagem(e);
+                        var data = e.data_encomenda.ToLocalTime();
 
                         <tr>
                             <td>
-                                <div class="fw-semibold">@titulo</div>
-                                @if (preco.HasValue)
-                                {
-                                    <div class="text-muted small">@preco.Value.ToString("N2") €</div>
-                                }
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (!string.IsNullOrWhiteSpace(img))
+                                    {
+                                        <img src="@img" alt="Imagem" class="am-img-lg" />
+                                    }
+                                    else
+                                    {
+                                        <div class="am-img-placeholder-lg">
+                                            <i class="bi bi-image"></i>
+                                        </div>
+                                    }
+
+                                    <div>
+                                        <div class="am-title">
+                                            <a asp-controller="Anuncios" asp-action="Detalhes" asp-route-id="@e.id_anuncio">
+                                                @titulo
+                                            </a>
+                                        </div>
+                                        <div class="am-meta text-muted">
+                                            Preço: @(preco.HasValue ? $"{preco.Value:N2} €" : "—")
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
 
-                            <td>@e.data_encomenda.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="text-center">
+                                <div class="small">@data.ToString("dd/MM/yyyy")</div>
+                                <div class="small text-muted">@data.ToString("HH:mm")</div>
+                            </td>
 
                             <td class="text-end">
-                                <a class="btn btn-success btn-sm"
-                                   asp-controller="Encomendas"
-                                   asp-action="Checkout"
-                                   asp-route-id="@e.id_encomenda">
-                                    <i class="bi bi-credit-card"></i> Checkout
-                                </a>
+                                <div class="d-inline-flex gap-2 am-meus-actions">
+                                    <a class="btn btn-sm btn-outline-dark"
+                                       asp-controller="Anuncios"
+                                       asp-action="Detalhes"
+                                       asp-route-id="@e.id_anuncio">
+                                        <i class="bi bi-eye"></i> Ver anúncio
+                                    </a>
 
-                                <form asp-controller="Encomendas" asp-action="Cancelar" method="post"
-                                      class="d-inline"
-                                      onsubmit="return confirm('Queres mesmo cancelar esta encomenda?');">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@e.id_encomenda" />
-                                    <input type="hidden" name="returnTo" value="Carrinho" />
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">
-                                        <i class="bi bi-x-circle"></i> Cancelar
-                                    </button>
-                                </form>
+                                    <a class="btn btn-sm btn-success"
+                                       asp-controller="Encomendas"
+                                       asp-action="Checkout"
+                                       asp-route-id="@e.id_encomenda">
+                                        <i class="bi bi-credit-card"></i> Checkout
+                                    </a>
+
+                                    <form asp-controller="Encomendas" asp-action="Cancelar" method="post"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Queres mesmo cancelar esta encomenda?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@e.id_encomenda" />
+                                        <input type="hidden" name="returnTo" value="Carrinho" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-x-circle"></i> Cancelar
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     }
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            </table>
         </div>
     }
+
 </div>

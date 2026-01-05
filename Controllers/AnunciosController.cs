@@ -495,54 +495,58 @@ public class AnunciosController : Controller
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null) return Unauthorized();
 
+        // (opcional mas recomendado) reafirma vendedor também aqui
+        var isVendedor = await _marketDb.Vendedor.AnyAsync(v => v.id_utilizador == idUtilizador.Value);
+        if (!isVendedor) return Forbid();
+
         estado = (estado ?? "ativo").Trim().ToLowerInvariant();
         q = (q ?? "").Trim();
         sort = (sort ?? "recent").Trim().ToLowerInvariant();
+
+        // normaliza estado
+        if (estado is not ("ativo" or "inativo" or "rascunho" or "reservado" or "vendido" or "todos"))
+            estado = "ativo";
 
         var query = _marketDb.Anuncio
             .AsNoTracking()
             .Where(a => a.id_vendedor == idUtilizador.Value)
             .Include(a => a.Anuncio_Imagem)
                 .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
-            .Include(a => a.id_veiculoNavigation)
-                .ThenInclude(v => v.id_sub_modeloNavigation)
-                    .ThenInclude(sm => sm.id_modeloNavigation)
-                        .ThenInclude(m => m.id_marcaNavigation)
             .AsQueryable();
 
-        // Filtro por estado
+        // Só precisamos disto se for "reservado" / "vendido" / "todos"
+        if (estado is "reservado" or "vendido" or "todos")
+        {
+            query = query
+                .Include(a => a.Reserva)
+                    .ThenInclude(r => r.id_utilizadorNavigation)
+                        .ThenInclude(c => c.id_utilizadorNavigation)
+                .Include(a => a.Encomenda)
+                    .ThenInclude(e => e.id_utilizadorNavigation)
+                        .ThenInclude(c => c.id_utilizadorNavigation);
+        }
+
+
         if (estado != "todos")
-        {
-            query = estado switch
-            {
-                "ativo" => query.Where(a => a.estado == "ativo"),
-                "inativo" => query.Where(a => a.estado == "inativo"),
-                "rascunho" => query.Where(a => a.estado == "rascunho"),
-                "reservado" => query.Where(a => a.estado == "reservado"),
-                "vendido" => query.Where(a => a.estado == "vendido"),
-                _ => query.Where(a => a.estado == "ativo")
-            };
-        }
+            query = query.Where(a => a.estado == estado);
 
-        // Pesquisa só por título
         if (!string.IsNullOrWhiteSpace(q))
-        {
             query = query.Where(a => a.titulo != null && a.titulo.Contains(q));
-        }
 
-        // Ordenação
         query = sort switch
         {
             "oldest" => query.OrderBy(a => a.data_publicacao ?? DateTime.MaxValue),
             "price_asc" => query.OrderBy(a => a.preco ?? decimal.MaxValue),
-            "price_desc" => query.OrderByDescending(a => a.preco ?? 0),
-            _ => query.OrderByDescending(a => a.data_atualizacao)
+            "price_desc" => query.OrderByDescending(a => a.preco ?? 0m),
+            _ => query.OrderByDescending(a => a.data_publicacao ?? DateTime.MinValue) // "recent"
         };
 
         var lista = await query.ToListAsync();
 
-        return PartialView(lista);
+        // ✅ FORÇA o ficheiro do partial (evita apanhar outro _MeusLista.cshtml antigo)
+        return PartialView("~/Views/Anuncios/_MeusLista.cshtml", lista);
     }
+
 
 
 
@@ -835,6 +839,9 @@ public class AnunciosController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Remover(int id)
     {
+        var (a, block) = await GetMyAnuncioOrBlock(id, blockIfSold: true);
+        if (block != null) return block;
+
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null) return Unauthorized();
 
@@ -996,6 +1003,9 @@ public class AnunciosController : Controller
     [HttpGet]
     public async Task<IActionResult> Editar(int id)
     {
+        var (a, block) = await GetMyAnuncioOrBlock(id, blockIfSold: true);
+        if (block != null) return block;
+
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null) return Unauthorized();
 
@@ -1098,6 +1108,9 @@ public class AnunciosController : Controller
         string submitAction,
         string? imagensOrder)
     {
+        var (a, block) = await GetMyAnuncioOrBlock(id, blockIfSold: true);
+        if (block != null) return block;
+
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null) return Unauthorized();
 
@@ -1853,8 +1866,57 @@ public class AnunciosController : Controller
             .OrderByDescending(cf => cf.data_filtros)
             .ToListAsync();
 
+        // ✅ Recolher IDs do JSON (1x) para resolver nomes (sem N+1)
+        var marcaIds = new HashSet<int>();
+        var modeloIds = new HashSet<int>();
+        var subIds = new HashSet<int>();
+
+        foreach (var cf in lista)
+        {
+            var json = cf.id_filtroNavigation?.parametros;
+            if (string.IsNullOrWhiteSpace(json)) continue;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                int? GetInt(string k)
+                    => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.Number ? p.GetInt32() : null;
+
+                var idMarca = GetInt("idMarca");
+                var idModelo = GetInt("idModelo");
+                var idSub = GetInt("idSubModelo");
+
+                if (idMarca.HasValue && idMarca.Value > 0) marcaIds.Add(idMarca.Value);
+                if (idModelo.HasValue && idModelo.Value > 0) modeloIds.Add(idModelo.Value);
+                if (idSub.HasValue && idSub.Value > 0) subIds.Add(idSub.Value);
+            }
+            catch { /* ignora JSON inválido */ }
+        }
+
+        var marcaById = await _marketDb.Marca
+            .AsNoTracking()
+            .Where(m => marcaIds.Contains(m.id_marca))
+            .ToDictionaryAsync(m => m.id_marca, m => m.nome);
+
+        var modeloById = await _marketDb.Modelo
+            .AsNoTracking()
+            .Where(m => modeloIds.Contains(m.id_modelo))
+            .ToDictionaryAsync(m => m.id_modelo, m => m.nome);
+
+        var subById = await _marketDb.Sub_Modelo
+            .AsNoTracking()
+            .Where(s => subIds.Contains(s.id_sub_modelo))
+            .ToDictionaryAsync(s => s.id_sub_modelo, s => s.nome);
+
+        ViewBag.MarcaById = marcaById;
+        ViewBag.ModeloById = modeloById;
+        ViewBag.SubModeloById = subById;
+
         return View(lista);
     }
+
 
     // ========================================
     // POST: /Anuncios/EliminarFiltro
@@ -1894,7 +1956,7 @@ public class AnunciosController : Controller
             }
         }
 
-        TempData["Msg"] = "Filtro eliminado.";
+        TempData["MsgFiltros"] = "Filtro eliminado.";
         return RedirectToAction(nameof(MeusFiltros));
     }
 
@@ -2056,44 +2118,146 @@ public class AnunciosController : Controller
     [ExpireReservas]
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> MinhasOperacoes()
+    // GET: /Anuncios/MinhasOperacoes?tipo=todos|reservas|visitas|encomendas
+    public async Task<IActionResult> MinhasOperacoes(string tipo = "todos")
     {
-
         var idUtil = await _currentUser.GetMarketUserIdAsync(User);
-        if (idUtil is null) return Unauthorized();
+        if (idUtil == null) return Unauthorized();
 
-        var isComprador = await _marketDb.Comprador.AnyAsync(c => c.id_utilizador == idUtil.Value);
-        if (!isComprador) return Forbid();
+        var tipoUi = (tipo ?? "todos").ToLowerInvariant();
+        if (tipoUi is not ("todos" or "reservas" or "visitas" or "encomendas"))
+            tipoUi = "todos";
 
-        var reservas = await _marketDb.Reserva
+        // === CONTAGENS p/ tabs ===
+        // Reservas: contar TODAS (ativa/expirada/cancelada)
+        var cReservas = await _marketDb.Reserva
             .AsNoTracking()
-            .Where(r => r.id_utilizador == idUtil.Value && r.estado == "ativa")
+            .CountAsync(r => r.id_utilizador == idUtil.Value);
+
+        // Visitas: só contar (a lista continua ajax no VisitasController)
+        var cVisitas = await _marketDb.Visita
+            .AsNoTracking()
+            .CountAsync(v => v.id_utilizador == idUtil.Value);
+
+        // Encomendas: contar TODAS (pendente/pago/cancelado)
+        var cEncomendas = await _marketDb.Encomenda
+            .AsNoTracking()
+            .CountAsync(e => e.id_utilizador == idUtil.Value);
+
+        ViewBag.Tipo = tipoUi;
+        ViewBag.CountReservas = cReservas;
+        ViewBag.CountVisitas = cVisitas;
+        ViewBag.CountEncomendas = cEncomendas;
+        ViewBag.CountTodos = cReservas + cVisitas + cEncomendas;
+
+        return View(); // a view principal só tem tabs + container ajax
+    }
+
+    // ========================================
+    // GET: /Anuncios/_MinhasOperacoesConteudo
+    // Conteúdo trocado por tabs (AJAX)
+    // ========================================
+    [ExpireReservas]
+    [Authorize]
+    [HttpGet]
+    // GET: /Anuncios/_MinhasOperacoesConteudo?tipo=...
+    public async Task<IActionResult> _MinhasOperacoesConteudo(string tipo = "todos")
+    {
+        var idUtil = await _currentUser.GetMarketUserIdAsync(User);
+        if (idUtil == null) return Unauthorized();
+
+        var tipoUi = (tipo ?? "todos").ToLowerInvariant();
+        if (tipoUi is not ("todos" or "reservas" or "visitas" or "encomendas"))
+            tipoUi = "todos";
+
+        // Carregamentos iniciais (para renderizar logo a lista por defeito).
+        // Reservas: TODAS (ativa/expirada/cancelada)
+        var reservas = new List<Reserva>();
+        if (tipoUi is "todos" or "reservas")
+        {
+            reservas = await _marketDb.Reserva
+                .Include(r => r.id_anuncioNavigation)
+                    .ThenInclude(a => a.Anuncio_Imagem)
+                        .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
+                .Where(r => r.id_utilizador == idUtil.Value)
+                .OrderByDescending(r => r.data_reserva)
+                .ToListAsync();
+        }
+
+        // Encomendas: por defeito “todos” (pendente/pago/cancelado)
+        // (Se o teu _MinhasOperacoesConteudo ainda renderiza a secção de encomendas
+        // com dados iniciais, podes continuar a carregar aqui — ou deixar só o container
+        // e a lista vir do EncomendasController via AJAX.)
+        if (tipoUi is "todos" or "encomendas")
+        {
+            var encomendas = await _marketDb.Encomenda
+                .Include(e => e.id_anuncioNavigation)
+                    .ThenInclude(a => a.Anuncio_Imagem)
+                        .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
+                .Where(e => e.id_utilizador == idUtil.Value)
+                .OrderByDescending(e => e.data_encomenda)
+                .ToListAsync();
+
+            ViewBag.Encomendas = encomendas;
+        }
+
+        ViewBag.Tipo = tipoUi;
+
+        return PartialView("_MinhasOperacoesConteudo", reservas);
+    }
+
+    // ========================================
+    // GET: /Anuncios/ListaMinhasReservas  (AJAX)
+    // Partial: Views/Anuncios/_MinhasReservasLista.cshtml
+    // ========================================
+    [ExpireReservas]
+    [Authorize]
+    [HttpGet]
+    public async Task<IActionResult> ListaMinhasReservas(string estado = "todos", string ordem = "recent")
+    {
+        var idUtil = await _currentUser.GetMarketUserIdAsync(User);
+        if (idUtil == null) return Unauthorized();
+
+        var q = _marketDb.Reserva
             .Include(r => r.id_anuncioNavigation)
                 .ThenInclude(a => a.Anuncio_Imagem)
-                .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
-            .OrderByDescending(r => r.data_reserva)
-            .ToListAsync();
+                    .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
+            .Where(r => r.id_utilizador == idUtil.Value);
 
-        var visitas = await _marketDb.Visita
-            .AsNoTracking()
-            .Where(v => v.id_utilizador == idUtil.Value)
-            .OrderByDescending(v => v.data_visita)
-            .ToListAsync();
+        // ✅ Filtro por estado
+        estado = (estado ?? "todos").Trim().ToLowerInvariant();
+        if (estado != "todos")
+        {
+            q = q.Where(r => r.estado != null && r.estado.ToLower() == estado);
+        }
 
-        var encomendas = await _marketDb.Encomenda
-            .AsNoTracking()
-            .Where(e => e.id_utilizador == idUtil.Value)
-            .Include(e => e.id_anuncioNavigation)
-                .ThenInclude(a => a.Anuncio_Imagem)
-                .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
-            .OrderByDescending(e => e.data_encomenda)
-            .ToListAsync();
+        // ✅ Ordenação: recent/oldest (data_reserva) + expira_proxima/expira_longe (data_expiracao)
+        ordem = (ordem ?? "recent").Trim().ToLowerInvariant();
+        q = ordem switch
+        {
+            "oldest" => q.OrderBy(r => r.data_reserva),
+            "recent" => q.OrderByDescending(r => r.data_reserva),
 
-        ViewBag.Visitas = visitas;
-        ViewBag.Encomendas = encomendas;
+            // ✅ Expira nulo: empurra para o fim
+            "expira_proxima" => q.OrderBy(r => r.data_expiracao == null)
+                                 .ThenBy(r => r.data_expiracao),
 
-        return View(reservas);
+            "expira_longe" => q.OrderBy(r => r.data_expiracao == null)
+                               .ThenByDescending(r => r.data_expiracao),
+
+            _ => q.OrderByDescending(r => r.data_reserva)
+        };
+
+        var lista = await q.ToListAsync();
+
+        ViewBag.Estado = estado;
+        ViewBag.Ordem = ordem;
+
+        return PartialView("~/Views/Reservas/_MinhasReservasLista.cshtml", lista);
     }
+
+
+
 
     // ========================================
     // POST: /Anuncios/CancelarReserva
@@ -2328,6 +2492,23 @@ public class AnunciosController : Controller
 
         _marketDb.Notificacao_Recebida.Add(recebida);
     }
+
+    private async Task<(Anuncio? anuncio, IActionResult? block)> GetMyAnuncioOrBlock(long id, bool blockIfSold)
+    {
+        var idUtil = await _currentUser.GetMarketUserIdAsync(User);
+        if (idUtil == null) return (null, Unauthorized());
+
+        var anuncio = await _marketDb.Anuncio
+            .FirstOrDefaultAsync(a => a.id_anuncio == id && a.id_vendedor == idUtil.Value);
+
+        if (anuncio == null) return (null, NotFound());
+
+        if (blockIfSold && string.Equals(anuncio.estado, "vendido", StringComparison.OrdinalIgnoreCase))
+            return (anuncio, Forbid()); // 403
+
+        return (anuncio, null);
+    }
+
 
 
     // ============================================================

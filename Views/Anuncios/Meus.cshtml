@@ -20,6 +20,7 @@
         border-bottom: 1px solid #e5e7eb;
         margin-bottom: 14px;
         padding-bottom: 6px;
+        flex-wrap: wrap;
     }
 
         .tabs2 a {
@@ -28,6 +29,7 @@
             color: #6b7280;
             font-weight: 650;
             border-bottom: 3px solid transparent;
+            cursor: pointer;
         }
 
             .tabs2 a.active {
@@ -37,27 +39,16 @@
 
     .toolbar2 {
         display: grid;
-        grid-template-columns: 140px 1fr 260px 280px;
+        grid-template-columns: 1fr 320px;
         gap: 12px;
         align-items: center;
         margin: 14px 0 10px 0;
     }
+
     @@media (max-width: 1100px) {
         .toolbar2 {
-            grid-template-columns: 140px 1fr;
+            grid-template-columns: 1fr;
         }
-    }
-
-    .btnFilters {
-        border: 1px solid #e5e7eb;
-        background: #fff;
-        border-radius: 10px;
-        padding: 10px 14px;
-        font-weight: 650;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
     }
 
     .inputLike {
@@ -74,111 +65,189 @@
     }
 </style>
 
-<h2 class="mb-2">@ViewData["Title"]</h2>
+<div class="container mt-3">
 
-<!-- TABS -->
-<div class="tabs2">
-    <a class="@(estado == "ativo" ? "active" : "")"
-       href="@Url.Action("Meus", "Anuncios", new { estado = "ativo", q = q, sort = sort })">
-        Ativos (@cAtivo)
-    </a>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="mb-0">@ViewData["Title"]</h2>
 
-    <a class="@(estado == "inativo" ? "active" : "")"
-       href="@Url.Action("Meus", "Anuncios", new { estado = "inativo", q = q, sort = sort })">
-        Pausados (@cInativo)
-    </a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-dark" asp-controller="Anuncios" asp-action="Criar">
+                <i class="bi bi-plus-lg"></i> Criar anúncio
+            </a>
 
-    <a class="@(estado == "rascunho" ? "active" : "")"
-       href="@Url.Action("Meus", "Anuncios", new { estado = "rascunho", q = q, sort = sort })">
-        Rascunhos (@cRasc)
-    </a>
-
-    <a class="@(estado == "reservado" ? "active" : "")"
-       href="@Url.Action("Meus", "Anuncios", new { estado = "reservado", q = q, sort = sort })">
-        Reservados (@cRes)
-    </a>
-
-    <a class="@(estado == "vendido" ? "active" : "")"
-       href="@Url.Action("Meus", "Anuncios", new { estado = "vendido", q = q, sort = sort })">
-        Vendidos (@cVend)
-    </a>
-
-    <a class="@(estado == "todos" ? "active" : "")"
-       href="@Url.Action("Meus", "Anuncios", new { estado = "todos", q = q, sort = sort })">
-        Todos (@cTodos)
-    </a>
-</div>
-
-<!-- TOOLBAR (parecida à print) -->
-<form id="filterForm"
-      method="get"
-      asp-action="Meus"
-      asp-controller="Anuncios"
-      data-ajax="true"
-      data-ajax-method="get"
-      data-ajax-mode="replace"
-      data-ajax-update="#listContainer"
-      data-ajax-url="@Url.Action("_MeusLista","Anuncios")">
-
-    <input type="hidden" name="estado" value="@estado" />
-
-    <div class="toolbar2">
-        <button type="button" class="btnFilters" onclick="alert('Ainda não implementado');">
-            <span>⚙️</span> <span>Filtros</span>
-        </button>
-
-        <div class="inputLike">
-            <input name="q"
-                   value="@q"
-                   class="form-control border-0 p-0"
-                   placeholder="Pesquisar por título" />
+            <a class="btn btn-secondary" asp-controller="Anuncios" asp-action="Carros">
+                Voltar aos carros
+            </a>
         </div>
 
-        <!-- categoria: só UI (se ainda não tens categorias reais, deixa assim) -->
-        <select class="form-select inputLike" disabled>
-            <option>Qualquer categoria</option>
-        </select>
-
-        <select name="sort" class="form-select inputLike">
-            <option value="recent" selected="@(sort == "recent")">Data de publicação: Mais recente</option>
-            <option value="oldest" selected="@(sort == "oldest")">Data de publicação: Mais antiga</option>
-            <option value="price_asc" selected="@(sort == "price_asc")">Preço: mais baixo</option>
-            <option value="price_desc" selected="@(sort == "price_desc")">Preço: mais alto</option>
-        </select>
     </div>
 
-    <div class="mutedline">
-        A mostrar anúncios.
-    </div>
-</form>
+    @if (TempData["Msg"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show">
+            @TempData["Msg"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
 
-<div id="listContainer">
-    <div class="text-center text-muted py-4">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">A carregar...</span>
+    <!-- TABS (SEM reload: só AJAX) -->
+    <div class="tabs2" id="meusTabs">
+        <a href="@Url.Action("Meus", "Anuncios", new { estado = "ativo", q = q, sort = sort })"
+           data-estado="ativo"
+           class="@(estado == "ativo" ? "active" : "")">
+            Ativos (@cAtivo)
+        </a>
+
+        <a href="@Url.Action("Meus", "Anuncios", new { estado = "inativo", q = q, sort = sort })"
+           data-estado="inativo"
+           class="@(estado == "inativo" ? "active" : "")">
+            Pausados (@cInativo)
+        </a>
+
+        <a href="@Url.Action("Meus", "Anuncios", new { estado = "rascunho", q = q, sort = sort })"
+           data-estado="rascunho"
+           class="@(estado == "rascunho" ? "active" : "")">
+            Rascunhos (@cRasc)
+        </a>
+
+        <a href="@Url.Action("Meus", "Anuncios", new { estado = "reservado", q = q, sort = sort })"
+           data-estado="reservado"
+           class="@(estado == "reservado" ? "active" : "")">
+            Reservados (@cRes)
+        </a>
+
+        <a href="@Url.Action("Meus", "Anuncios", new { estado = "vendido", q = q, sort = sort })"
+           data-estado="vendido"
+           class="@(estado == "vendido" ? "active" : "")">
+            Vendidos (@cVend)
+        </a>
+
+        <a href="@Url.Action("Meus", "Anuncios", new { estado = "todos", q = q, sort = sort })"
+           data-estado="todos"
+           class="@(estado == "todos" ? "active" : "")">
+            Todos (@cTodos)
+        </a>
+    </div>
+
+    <!-- TOOLBAR: só pesquisa + ordenação -->
+    <form id="filterForm"
+          method="get"
+          asp-action="Meus"
+          asp-controller="Anuncios"
+          data-ajax="true"
+          data-ajax-method="get"
+          data-ajax-mode="replace"
+          data-ajax-update="#listContainer"
+          data-ajax-url="@Url.Action("_MeusLista","Anuncios")">
+
+        <input type="hidden" name="estado" value="@estado" />
+
+        <div class="toolbar2">
+            <div class="inputLike">
+                <input name="q"
+                       value="@q"
+                       class="form-control border-0 p-0"
+                       placeholder="Pesquisar por título" />
+            </div>
+
+            <select name="sort" class="form-select inputLike">
+                <option value="recent" selected="@(sort == "recent")">Data de publicação: Mais recente</option>
+                <option value="oldest" selected="@(sort == "oldest")">Data de publicação: Mais antiga</option>
+                <option value="price_asc" selected="@(sort == "price_asc")">Preço: mais baixo</option>
+                <option value="price_desc" selected="@(sort == "price_desc")">Preço: mais alto</option>
+            </select>
+        </div>
+
+        <div class="mutedline">
+            A mostrar anúncios.
+        </div>
+    </form>
+
+    <div id="listContainer">
+        <div class="text-center text-muted py-4">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">A carregar...</span>
+            </div>
         </div>
     </div>
+
 </div>
+
+@await Html.PartialAsync("_UserInfoModal")
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        $(function () {
-            let searchTimeout;
+        (function () {
+            function buildUrl(estado, q, sort) {
+                const base = '@Url.Action("Meus", "Anuncios")';
+                const p = new URLSearchParams();
+                if (estado) p.set("estado", estado);
+                if (q) p.set("q", q);
+                if (sort) p.set("sort", sort);
+                const qs = p.toString();
+                return qs ? (base + "?" + qs) : base;
+            }
 
-            $('select[name="sort"]').on('change', function () {
-                $('#filterForm').trigger('submit');
-            });
+            window.amMeusInit = function () {
+                const $form = $('#filterForm');
+                if (!$form.length) return;
 
-            $('input[name="q"]').on('input', function () {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(function () {
-                    $('#filterForm').trigger('submit');
-                }, 450);
-            });
+                if ($form.data('bound') === 1) return;
+                $form.data('bound', 1);
 
-            // carrega logo ao abrir
-            $('#filterForm').trigger('submit');
-        });
+                const $estado = $form.find('input[name="estado"]');
+                const $q = $form.find('input[name="q"]');
+                const $sort = $form.find('select[name="sort"]');
+
+                let searchTimeout;
+
+                function submit() { $form.trigger('submit'); }
+
+                $sort.on('change', submit);
+
+                $q.on('input', function () {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(submit, 450);
+                });
+
+                $('#meusTabs a[data-estado]').on('click', function (e) {
+                    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return;
+
+                    e.preventDefault();
+
+                    const st = $(this).data('estado');
+                    $estado.val(st);
+
+                    $('#meusTabs a').removeClass('active');
+                    $(this).addClass('active');
+
+                    const url = buildUrl(st, $q.val(), $sort.val());
+                    try { history.pushState(null, "", url); } catch { }
+
+                    submit();
+                });
+
+                window.addEventListener('popstate', function () {
+                    const params = new URLSearchParams(window.location.search);
+                    const st = (params.get("estado") || "ativo");
+                    const qq = (params.get("q") || "");
+                    const so = (params.get("sort") || "recent");
+
+                    $estado.val(st);
+                    $q.val(qq);
+                    $sort.val(so);
+
+                    $('#meusTabs a').removeClass('active');
+                    $('#meusTabs a[data-estado="' + st + '"]').addClass('active');
+
+                    submit();
+                });
+
+                submit();
+            };
+
+            $(function () { window.amMeusInit(); });
+        })();
     </script>
 }

@@ -2,112 +2,177 @@
 @model List<Visita>
 
 @{
-    string estado = ViewBag.Estado ?? "pendente";
-    string ordem = ViewBag.Ordem ?? "data_proxima";
+    var estadoAtual = (string)(ViewBag.Estado ?? "agendada");
+    var ordemAtual = (string)(ViewBag.Ordem ?? "data_proxima");
+
+    string EstadoLabel(string? st)
+    {
+        st = (st ?? "").Trim().ToLowerInvariant();
+        return st switch
+        {
+            "pendente" => "Pendente",
+            "agendada" => "Agendada",
+            "rejeitada" => "Rejeitada",
+            "cancelada" => "Cancelada",
+            "realizada" => "Realizada",
+            _ => "—"
+        };
+    }
+
+    string EstadoBadgeClass(string? st)
+    {
+        st = (st ?? "").Trim().ToLowerInvariant();
+        return st switch
+        {
+            "pendente" => "bg-warning text-dark",
+            "agendada" => "bg-primary",
+            "realizada" => "bg-success",
+            "rejeitada" => "bg-danger",
+            "cancelada" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
 }
 
-@if (!Model.Any())
+@if (Model == null || Model.Count == 0)
 {
-    <div class="alert alert-secondary">Sem visitas para os filtros selecionados.</div>
+    <div class="alert alert-light border mb-0">
+        Sem visitas para este estado.
+    </div>
 }
 else
 {
     <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
+        <table class="table table-hover align-middle am-scale-lg mb-0 text-center">
+            <thead class="text-center">
                 <tr>
-                    <th style="width:90px;"></th>
-                    <th>Detalhe</th>
-                    <th style="width:180px;">Data agendada</th>
-                    <th style="width:120px;">Estado</th>
-                    <th style="width:240px;" class="text-end">Ações</th>
+                    <th style="width: 280px;" class="text-start">Anúncio</th>
+                    <th>Comprador</th>
+                    <th style="width: 210px;">Data</th>
+                    <th style="width: 160px;">Estado</th>
+                    <th style="width: 320px;" class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var v in Model)
                 {
                     var anuncio = v.id_anuncioNavigation;
-                    var img = anuncio?.Anuncio_Imagem?
-                        .OrderByDescending(x => x.principal)
-                        .ThenBy(x => x.ordem ?? 9999)
-                        .FirstOrDefault()
-                        ?.id_imagem_anuncioNavigation?.url;
+                    var titulo = anuncio?.titulo ?? $"Anúncio #{v.id_anuncio}";
+
+                    var capa = (anuncio?.Anuncio_Imagem ?? new List<Anuncio_Imagem>())
+                    .OrderByDescending(x => x.principal)
+                    .ThenBy(x => x.ordem ?? 9999)
+                    .FirstOrDefault();
+
+                    var imgUrl = capa?.id_imagem_anuncioNavigation?.url;
+
+                    var compradorNome =
+                    v.id_utilizadorNavigation?.id_utilizadorNavigation?.nome
+                    ?? $"Utilizador #{v.id_utilizador}";
+
+                    var dataFmt = v.data_visita.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
 
                     <tr>
-                        <td>
-                            @if (!string.IsNullOrWhiteSpace(img))
-                            {
-                                <img src="@img" class="rounded" style="width:80px;height:55px;object-fit:cover;" alt="Imagem" />
-                            }
-                            else
-                            {
-                                <div class="bg-light rounded d-flex align-items-center justify-content-center"
-                                     style="width:80px;height:55px;">
-                                    <i class="bi bi-image text-muted"></i>
+                        <td class="text-start">
+                            <div class="d-flex align-items-center gap-2 justify-content-start">
+                                @if (!string.IsNullOrWhiteSpace(imgUrl))
+                                {
+                                    <img src="@imgUrl" class="am-img-lg" alt="Capa" />
+                                }
+                                else
+                                {
+                                    <div class="am-img-placeholder-lg">
+                                        <i class="bi bi-image"></i>
+                                    </div>
+                                }
+
+                                <div class="text-start">
+                                    <div class="am-title mb-0">
+                                        <a asp-controller="Anuncios" asp-action="Detalhes" asp-route-id="@v.id_anuncio">
+                                            @titulo
+                                        </a>
+                                    </div>
                                 </div>
-                            }
+                            </div>
                         </td>
 
                         <td>
-                            <div class="fw-semibold">
-                                <a asp-controller="Anuncios" asp-action="Detalhes" asp-route-id="@v.id_anuncio">
-                                    @(anuncio?.titulo ?? $"Anúncio #{v.id_anuncio}")
-                                </a>
-                            </div>
-                            <div class="text-muted small">
-                                Visita #@v.id_visita · Comprador #@v.id_utilizador
-                            </div>
+                            <a href="#"
+                               class="js-userinfo d-inline-flex align-items-center gap-2 fw-semibold text-decoration-underline"
+                               data-userid="@v.id_utilizador"
+                               title="Clique para ver informações do comprador"
+                               aria-label="Ver informações do comprador">
+                                <span>@compradorNome</span>
+                                <i class="bi bi-info-circle"></i>
+                            </a>
                         </td>
 
-                        <td>@v.data_visita.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
 
-                        <td><span class="badge bg-secondary">@v.estado</span></td>
+                        <td>
+                            <div class="fw-semibold">@dataFmt</div>
+                            <div class="text-muted small">UTC: @v.data_visita.ToString("dd/MM/yyyy HH:mm")</div>
+                        </td>
+
+                        <td>
+                            <span class="badge am-badge-fixed @EstadoBadgeClass(v.estado)">
+                                @EstadoLabel(v.estado)
+                            </span>
+                        </td>
 
                         <td class="text-end">
-                            @if (v.estado == "pendente")
-                            {
-                                <form asp-action="Aceitar" method="post"
-                                      data-ajax="true"
-                                      data-ajax-method="POST"
-                                      data-ajax-update="#listaVisitas"
-                                      class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@v.id_visita" />
-                                    <input type="hidden" name="estado" value="@estado" />
-                                    <input type="hidden" name="ordem" value="@ordem" />
-                                    <button class="btn btn-success btn-sm">Aceitar</button>
-                                </form>
+                            <div class="am-ops-actions justify-content-end">
+                                <a asp-controller="Anuncios"
+                                   asp-action="Detalhes"
+                                   asp-route-id="@v.id_anuncio"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    Ver anúncio
+                                </a>
 
-                                <form asp-action="Rejeitar" method="post"
-                                      data-ajax="true"
-                                      data-ajax-method="POST"
-                                      data-ajax-update="#listaVisitas"
-                                      class="d-inline ms-1">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@v.id_visita" />
-                                    <input type="hidden" name="estado" value="@estado" />
-                                    <input type="hidden" name="ordem" value="@ordem" />
-                                    <button class="btn btn-outline-danger btn-sm">Rejeitar</button>
-                                </form>
-                            }
-                            else if (v.estado == "agendada")
-                            {
-                                <form asp-action="CancelarVendedor" method="post"
-                                      data-ajax="true"
-                                      data-ajax-method="POST"
-                                      data-ajax-update="#listaVisitas"
-                                      class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@v.id_visita" />
-                                    <input type="hidden" name="estado" value="@estado" />
-                                    <input type="hidden" name="ordem" value="@ordem" />
-                                    <button class="btn btn-outline-danger btn-sm">Cancelar</button>
-                                </form>
-                            }
-                            else
-                            {
-                                <span class="text-muted small">—</span>
-                            }
+                                @* Ações do vendedor *@
+                                @if ((v.estado ?? "").Trim().ToLowerInvariant() == "pendente")
+                                {
+                                    <form asp-controller="Visitas" asp-action="Aceitar" method="post"
+                                          data-ajax="true"
+                                          data-ajax-method="POST"
+                                          data-ajax-update="#listaVisitas"
+                                          data-ajax-mode="replace"
+                                          class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@v.id_visita" />
+                                        <input type="hidden" name="estado" value="@estadoAtual" />
+                                        <input type="hidden" name="ordem" value="@ordemAtual" />
+                                        <button type="submit" class="btn btn-sm btn-success">Aceitar</button>
+                                    </form>
+
+                                    <form asp-controller="Visitas" asp-action="Rejeitar" method="post"
+                                          data-ajax="true"
+                                          data-ajax-method="POST"
+                                          data-ajax-update="#listaVisitas"
+                                          data-ajax-mode="replace"
+                                          class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@v.id_visita" />
+                                        <input type="hidden" name="estado" value="@estadoAtual" />
+                                        <input type="hidden" name="ordem" value="@ordemAtual" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Rejeitar</button>
+                                    </form>
+                                }
+                                else if ((v.estado ?? "").Trim().ToLowerInvariant() == "agendada")
+                                {
+                                    <form asp-controller="Visitas" asp-action="CancelarVendedor" method="post"
+                                          data-ajax="true"
+                                          data-ajax-method="POST"
+                                          data-ajax-update="#listaVisitas"
+                                          data-ajax-mode="replace"
+                                          class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@v.id_visita" />
+                                        <input type="hidden" name="estado" value="@estadoAtual" />
+                                        <input type="hidden" name="ordem" value="@ordemAtual" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Cancelar</button>
+                                    </form>
+                                }
+                            </div>
                         </td>
                     </tr>
                 }

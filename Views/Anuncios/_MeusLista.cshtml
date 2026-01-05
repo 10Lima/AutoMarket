@@ -1,177 +1,212 @@
-﻿@model IEnumerable<AutoMarket.Models.Market.Anuncio>
+﻿@using AutoMarket.Models.Market
+@model IEnumerable<Anuncio>
 
-<style>
-    .adRow {
-        border: 1px solid #e5e7eb;
-        border-radius: 16px;
-        background: #fff;
-        padding: 14px;
-        display: grid;
-        grid-template-columns: 36px 160px 1fr 160px;
-        gap: 14px;
-        align-items: center;
-        margin-bottom: 14px;
-    }
+@{
+    var lista = Model ?? Enumerable.Empty<Anuncio>();
 
-    .adImg {
-        width: 160px;
-        height: 110px;
-        border-radius: 12px;
-        object-fit: cover;
-        background: #f3f4f6;
-        border: 1px solid #eef2f7;
-    }
+    string BadgeClass(string? e) => (e ?? "").ToLowerInvariant() switch
+    {
+        "ativo" => "bg-success",
+        "inativo" => "bg-secondary",
+        "rascunho" => "bg-info text-dark",
+        "reservado" => "bg-warning text-dark",
+        "vendido" => "bg-dark",
+        _ => "bg-secondary"
+    };
 
-    .adTitle {
-        font-size: 22px;
-        font-weight: 750;
-        color: #111827;
-        margin-bottom: 4px;
-    }
+    string Label(string? e) => (e ?? "").ToLowerInvariant() switch
+    {
+        "ativo" => "Ativo",
+        "inativo" => "Pausado",
+        "rascunho" => "Rascunho",
+        "reservado" => "Reservado",
+        "vendido" => "Vendido",
+        _ => e ?? "—"
+    };
 
-    .adMeta {
-        color: #6b7280;
-        font-size: 14px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        align-items: center;
-    }
+    string? PrimeiraImagem(Anuncio a) =>
+        a.Anuncio_Imagem?
+            .OrderByDescending(x => x.principal)
+            .ThenBy(x => x.ordem ?? 9999)
+            .Select(x => x.id_imagem_anuncioNavigation?.url)
+            .FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+}
 
-    .price {
-        font-size: 22px;
-        font-weight: 800;
-        text-align: right;
-    }
-
-    .actions {
-        grid-column: 2 / 5;
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        padding-top: 8px;
-    }
-
-    .pill {
-        border: 1px solid #e5e7eb;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 12px;
-        font-weight: 700;
-        color: #374151;
-        background: #f9fafb;
-    }
-</style>
-
-@if (Model == null || !Model.Any())
+@if (!lista.Any())
 {
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> Nenhum anúncio encontrado.
+    <div class="alert alert-light border text-center py-4 mb-0">
+        <i class="bi bi-inbox" style="font-size: 2.5rem; color: #ccc;"></i>
+        <p class="mt-2 mb-0 text-muted">Não tens anúncios com estes filtros.</p>
     </div>
 }
 else
 {
-    foreach (var anuncio in Model)
-    {
-        var imgPrincipal = anuncio.Anuncio_Imagem?
-            .OrderByDescending(x => x.principal)
-            .ThenBy(x => x.ordem)
-            .FirstOrDefault();
-
-        var imgUrl = imgPrincipal?.id_imagem_anuncioNavigation?.url;
-
-        var marca = anuncio.id_veiculoNavigation?.id_sub_modeloNavigation?.id_modeloNavigation?.id_marcaNavigation?.nome;
-        var modelo = anuncio.id_veiculoNavigation?.id_sub_modeloNavigation?.id_modeloNavigation?.nome;
-        var sub = anuncio.id_veiculoNavigation?.id_sub_modeloNavigation?.nome;
-
-        <div class="adRow">
-            <input type="checkbox" class="form-check-input" />
-
-            @if (!string.IsNullOrWhiteSpace(imgUrl))
-            {
-                <img class="adImg" src="@imgUrl" alt="@anuncio.titulo" />
-            }
-            else
-            {
-                <div class="adImg d-flex align-items-center justify-content-center text-muted">
-                    sem imagem
-                </div>
-            }
-
-            <div>
-                <div class="adTitle">@anuncio.titulo</div>
-
-                <div class="adMeta">
-                    <span>@(marca ?? "") @(modelo ?? "") @(sub != null ? ("• " + sub) : "")</span>
-                    <span>📍 @(anuncio.localizacao ?? "—")</span>
-
-                    @if (anuncio.data_publicacao.HasValue)
-                    {
-                        <span>📅 @anuncio.data_publicacao.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
-                    }
-                    else
-                    {
-                        <span>📅 —</span>
-                    }
-
-                    <span class="pill">@anuncio.estado</span>
-                    @if (anuncio.destaque)
-                    {
-                        <span class="pill">destaque</span>
-                    }
-                </div>
-            </div>
-
-            <div class="price">
-                @(anuncio.preco.HasValue? anuncio.preco.Value.ToString("0.##") + " €" : "—")
-            </div>
-
-            <div class="actions">
-                <a class="btn btn-outline-secondary"
-                   href="@Url.Action("Detalhes", "Anuncios", new { id = anuncio.id_anuncio })">
-                    Ver
-                </a>
-
-                <a class="btn btn-outline-secondary"
-                   href="@Url.Action("Editar", "Anuncios", new { id = anuncio.id_anuncio })">
-                    Editar
-                </a>
-
-                @if (anuncio.estado == "ativo" || anuncio.estado == "reservado")
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 am-scale-lg">
+            <thead class="table-light">
+                <tr>
+                    <th>Anúncio</th>
+                    <th class="text-center" style="width:170px;">Estado</th>
+                    <th class="text-center" style="width:200px;">Publicado</th>
+                    <th class="text-end" style="width:360px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in lista)
                 {
-                    <form asp-action="Pausar" asp-controller="Anuncios" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@anuncio.id_anuncio" />
-                        <button type="submit" class="btn btn-warning">Pausar</button>
-                    </form>
+                    var pub = a.data_publicacao.HasValue ? a.data_publicacao.Value.ToLocalTime() : (DateTime?)null;
+                    var img = PrimeiraImagem(a);
+
+                    // ✅ NOVO: Buscar reserva ativa e encomenda paga
+                    var reservaAtiva = a.Reserva?
+                        .FirstOrDefault(r => string.Equals(r.estado, "ativa", StringComparison.OrdinalIgnoreCase));
+
+                    var encomendaPaga = a.Encomenda?
+                        .Where(e => string.Equals(e.estado, "pago", StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(e => e.data_encomenda)
+                        .FirstOrDefault();
+
+                    var nomeReservou = reservaAtiva?.id_utilizadorNavigation?.id_utilizadorNavigation?.nome;
+                    var idReservou = reservaAtiva?.id_utilizador;
+
+                    var nomeComprou = encomendaPaga?.id_utilizadorNavigation?.id_utilizadorNavigation?.nome;
+                    var idComprou = encomendaPaga?.id_utilizador;
+
+                    <tr>
+                        <td style="min-width:360px;">
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrWhiteSpace(img))
+                                {
+                                    <img src="@img" alt="Imagem" class="am-img-lg" />
+                                }
+                                else
+                                {
+                                    <div class="am-img-placeholder-lg">
+                                        <i class="bi bi-image"></i>
+                                    </div>
+                                }
+
+                                <div>
+                                    <div class="am-title">
+                                        <a asp-controller="Anuncios" asp-action="Detalhes" asp-route-id="@a.id_anuncio">
+                                            @(a.titulo ?? "—")
+                                        </a>
+                                        @if (a.destaque)
+                                        {
+                                            <i class="bi bi-star-fill text-warning ms-1 am-destaque-icon" title="Em destaque"></i>
+                                        }
+                                    </div>
+
+                                    <div class="am-meta text-muted">
+                                        Preço: @(a.preco.HasValue ? $"{a.preco.Value:N0} €" : "—")
+                                    </div>
+
+                                    @* ✅ NOVO: Mostrar quem reservou/comprou *@
+                                    @if (string.Equals(a.estado, "reservado", StringComparison.OrdinalIgnoreCase) && idReservou.HasValue)
+                                    {
+                                        <div class="am-meta text-muted">
+                                            Reservado por:
+                                            <a href="#"
+                                               class="js-userinfo fw-semibold text-decoration-none ms-1"
+                                               data-userid="@idReservou.Value"
+                                               title="Clique para ver informações do comprador"
+                                               style="color: #0066cc;">
+                                                @(nomeReservou ?? $"Utilizador #{idReservou.Value}")
+                                                <i class="bi bi-info-circle ms-1"></i>
+                                            </a>
+                                        </div>
+                                    }
+                                    else if (string.Equals(a.estado, "vendido", StringComparison.OrdinalIgnoreCase) && idComprou.HasValue)
+                                    {
+                                        <div class="am-meta text-muted">
+                                            Comprado por:
+                                            <a href="#"
+                                               class="js-userinfo fw-semibold text-decoration-none ms-1"
+                                               data-userid="@idComprou.Value"
+                                               title="Clique para ver informações do comprador"
+                                               style="color: #0066cc;">
+                                                @(nomeComprou ?? $"Utilizador #{idComprou.Value}")
+                                                <i class="bi bi-info-circle ms-1"></i>
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="text-center">
+                            <span class="badge @BadgeClass(a.estado)"
+                                  style="min-width:130px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;font-weight:650;">
+                                @Label(a.estado)
+                            </span>
+                        </td>
+
+                        <td class="text-center">
+                            @if (pub.HasValue)
+                            {
+                                <div class="small">@pub.Value.ToString("dd/MM/yyyy")</div>
+                                <div class="small text-muted">@pub.Value.ToString("HH:mm")</div>
+                            }
+                            else
+                            {
+                                <div class="small text-muted">—</div>
+                            }
+                        </td>
+
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-2 am-meus-actions">
+                                <a asp-controller="Anuncios" asp-action="Detalhes" asp-route-id="@a.id_anuncio"
+                                   class="btn btn-sm btn-outline-dark">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
+
+                                @if (!string.Equals(a.estado, "vendido", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <a asp-controller="Anuncios" asp-action="Editar" asp-route-id="@a.id_anuncio"
+                                       class="btn btn-sm btn-outline-dark">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+
+                                    @if (string.Equals(a.estado, "ativo", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <form asp-controller="Anuncios" asp-action="Pausar" method="post"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Pausar este anúncio?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@a.id_anuncio" />
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit">
+                                                <i class="bi bi-pause-circle"></i> Pausar
+                                            </button>
+                                        </form>
+                                    }
+                                    else if (string.Equals(a.estado, "inativo", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <form asp-controller="Anuncios" asp-action="Ativar" method="post"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Ativar este anúncio?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@a.id_anuncio" />
+                                            <button class="btn btn-sm btn-outline-success" type="submit">
+                                                <i class="bi bi-play-circle"></i> Ativar
+                                            </button>
+                                        </form>
+                                    }
+
+                                    <form asp-controller="Anuncios" asp-action="Remover" method="post"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Remover este anúncio?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@a.id_anuncio" />
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
                 }
-
-                @if (anuncio.estado is "inativo" or "rascunho")
-                {
-                    <form asp-action="Ativar" asp-controller="Anuncios" method="post" class="d-inline">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@anuncio.id_anuncio" />
-                        <button type="submit" class="btn btn-success">Ativar</button>
-                    </form>
-                }
-
-                <form asp-action="ToggleDestaque" asp-controller="Anuncios" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@anuncio.id_anuncio" />
-                    <button type="submit" class="btn btn-outline-dark">
-                        @(anuncio.destaque ? "Remover destaque" : "Destacar")
-                    </button>
-                </form>
-
-                <form asp-action="Remover" asp-controller="Anuncios" method="post"
-                      class="d-inline"
-                      onsubmit="return confirm('Tem a certeza que deseja remover este anúncio?');">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="id" value="@anuncio.id_anuncio" />
-                    <button type="submit" class="btn btn-outline-danger">Terminar</button>
-                </form>
-            </div>
-        </div>
-    }
+            </tbody>
+        </table>
+    </div>
 }

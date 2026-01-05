@@ -328,15 +328,16 @@ body {
 
 /* Botões pretos - sistema */
 .btn-am {
-    border-radius: 14px;
-    padding: 12px 14px;
-    font-weight: 600;
-    letter-spacing: .2px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: .55rem;
-    width: 100%;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: filter 0.2s ease;
 }
 
     .btn-am:focus-visible {
@@ -344,62 +345,32 @@ body {
         outline-offset: 2px;
     }
 
-/* Preto cheio */
+.btn-am-ghost {
+    background: #f8f9fa;
+    border-color: #d0d7de;
+    color: #212529;
+}
+
+.btn-am-outline {
+    background: #fff;
+    border-color: #111;
+    color: #111;
+}
+
 .btn-am-solid {
     background: #111;
-    border: 1px solid #111;
+    border-color: #111;
     color: #fff;
 }
 
-    .btn-am-solid:hover {
-        background: #000;
-        border-color: #000;
-        color: #fff;
-    }
-
-/* Preto outline */
-.btn-am-outline {
-    background: transparent;
-    border: 1px solid #111;
-    color: #111;
+.btn-am:hover {
+    filter: brightness(0.98);
+    text-decoration: none;
 }
 
-    .btn-am-outline:hover {
-        background: rgba(0,0,0,.04);
-    }
-
-/* Ghost (ainda "preto", mas leve) */
-.btn-am-ghost {
-    background: rgba(0,0,0,.03);
-    border: 1px solid rgba(0,0,0,.08);
-    color: #111;
+.btn-am i {
+    font-size: 1.1em;
 }
-
-    .btn-am-ghost:hover {
-        background: rgba(0,0,0,.06);
-    }
-
-/* X fechar */
-.am-close {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    border: 1px solid rgba(0,0,0,.12);
-    background: rgba(0,0,0,.03);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.35rem;
-    line-height: 1;
-    color: #111;
-    flex: 0 0 auto;
-    cursor: pointer;
-    transition: background-color .15s ease;
-}
-
-    .am-close:hover {
-        background: rgba(0,0,0,.06);
-    }
 
 /* ===== Painel de agendamento (trava overflow) ===== */
 .agendar-panel {
@@ -419,3 +390,350 @@ body {
     font-size: .95rem;
     white-space: nowrap;
 }
+
+/* ===== Agendamento de Visitas ===== */
+.agendar-panel .am-mt-btn {
+    margin-top: 10px;
+}
+
+.agendar-slot {
+    margin-top: 0.75rem;
+}
+
+
+
+/* Badges de estado: mesma largura e mesma altura dos botões btn-sm */
+.am-badge-fixed {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* largura igual para todos (>= "Cancelado") */
+    width: 100px;
+    /* altura semelhante a .btn-sm */
+    height: 31px;
+    /* para não ficar “baixinho” como badge normal */
+    font-size: .875rem;
+    font-weight: 600;
+    padding: 0 .65rem;
+    border-radius: .5rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   AM - Tabela/lista com escala maior (imagens grandes)
+   Usa em: Anuncios/Meus, MinhasOperacoes (Reservas/Visitas/Encomendas)
+   ========================================================= */
+
+/* ✅ Espaçamento e tamanho de fonte aumentado */
+.am-scale-lg th {
+    font-size: .95rem;
+    font-weight: 600;
+}
+
+.am-scale-lg td,
+.am-scale-lg th {
+    padding-top: 14px;
+    padding-bottom: 14px;
+}
+
+/* ✅ Imagem maior (128×92) */
+.am-scale-lg .am-img-lg {
+    width: 128px;
+    height: 92px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* ✅ Placeholder imagem (mesmo tamanho) */
+.am-scale-lg .am-img-placeholder-lg {
+    width: 128px;
+    height: 92px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .am-scale-lg .am-img-placeholder-lg i {
+        font-size: 2rem;
+        color: #d1d5db;
+    }
+
+/* ✅ Título do anúncio/operação */
+.am-scale-lg .am-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+    .am-scale-lg .am-title a {
+        text-decoration: none;
+    }
+
+        .am-scale-lg .am-title a:hover {
+            text-decoration: underline;
+        }
+
+/* ✅ Meta info (preço, data, etc.) */
+.am-scale-lg .am-meta {
+    font-size: .95rem;
+    line-height: 1.2;
+    margin-top: 4px;
+}
+
+/* ✅ Badges maiores */
+.am-scale-lg .badge {
+    font-size: .9rem;
+    padding: .45em .7em;
+}
+
+/* ✅ Botões maiores */
+.am-scale-lg .btn {
+    padding: .45rem .8rem;
+    font-size: .95rem;
+    line-height: 1.15;
+}
+
+/* ✅ Ícones de destaque (estrela) */
+.am-scale-lg .am-destaque-icon {
+    font-size: 1.1rem;
+}
+
+
+/* ===== Meus Anúncios: botões da coluna Ações à escala ===== */
+.am-meus-actions .btn.btn-sm,
+.am-meus-actions button.btn.btn-sm {
+    height: 48px;
+    padding: 0.375rem 0.75rem; /* Bootstrap-ish, mas maior */
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+/* =========================================================
+   AM SCALE LG (reutilizável em tabelas: Meus/MinhasOperacoes/etc.)
+   ========================================================= */
+
+.am-scale-lg th,
+.am-scale-lg td {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+    vertical-align: middle;
+}
+
+/* ✅ CORREÇÃO: Imagem com tamanho fixo + !important para anular regras globais */
+.am-scale-lg .am-img-lg {
+    width: 110px !important;
+    height: 80px !important;
+    max-width: 110px !important;
+    max-height: 80px !important;
+    object-fit: cover !important;
+    border-radius: 10px;
+    flex: 0 0 110px;  /* ✅ Impede crescimento no flex */
+    display: block;
+}
+
+/* ✅ Placeholder com mesmo tamanho */
+.am-scale-lg .am-img-placeholder-lg {
+    width: 110px !important;
+    height: 80px !important;
+    max-width: 110px !important;
+    max-height: 80px !important;
+    flex: 0 0 110px;
+    border-radius: 10px;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 1.2rem;
+}
+
+/* tipografia do bloco do anúncio */
+.am-scale-lg .am-title {
+    font-size: 1.05rem;
+    font-weight: 650;
+    line-height: 1.2;
+}
+
+    .am-scale-lg .am-title a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+.am-scale-lg .am-meta {
+    font-size: 0.95rem;
+}
+
+/* botões maiores mas ainda "compactos" */
+.am-scale-lg .btn-sm {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.95rem;
+    border-radius: 0.6rem;
+}
+
+/* badges "mais altos" e com largura fixa (para alinhamento) */
+.am-scale-lg .am-badge-fixed {
+    min-width: 130px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-weight: 650;
+}
+
+/* ===== Minhas Operações: botões da coluna Ações à escala ===== */
+.am-ops-actions .btn.btn-sm,
+.am-ops-actions button.btn.btn-sm {
+    height: 48px;
+    padding: 0.375rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+/* ✅ Mantém gap consistente entre botões */
+.am-ops-actions {
+    display: inline-flex;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+/* =========================================================
+   MINHAS OPERAÇÕES: Imagens + Botões (versão MAIOR/ESCALA)
+   ========================================================= */
+
+/* ✅ Imagem de capa (blindado contra img-fluid / regras globais) */
+.am-ops-img {
+    width: 120px !important;
+    height: 80px !important;
+    max-width: 120px !important;
+    max-height: 80px !important;
+    object-fit: cover !important;
+    border-radius: 10px !important;
+    display: block !important;
+    flex: 0 0 120px !important; /* Impede crescimento no flex */
+}
+
+/* ✅ Placeholder imagem (mesmo tamanho) */
+.am-ops-img-placeholder {
+    width: 120px !important;
+    height: 80px !important;
+    max-width: 120px !important;
+    max-height: 80px !important;
+    border-radius: 10px !important;
+    background: #f3f4f6 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #9ca3af !important;
+    flex: 0 0 120px !important;
+}
+
+    .am-ops-img-placeholder i {
+        font-size: 1.5rem;
+    }
+
+/* ✅ Botões das Ações à escala (altura 48px + fonte 0.95rem) */
+.am-ops-actions .btn.btn-sm,
+.am-ops-actions button.btn.btn-sm {
+    height: 48px;
+    padding: 0.375rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+/* ✅ Garantir que botões não quebram linha */
+.am-ops-actions {
+    display: inline-flex;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+
+
+
+
+/* =========================================================
+   AM TABS (estilo Anuncios/Meus): underline + texto grande
+   ========================================================= */
+.am-tabs {
+    border-bottom: 2px solid #e5e7eb !important; /* linha cinza */
+    gap: 2.25rem; /* espaço entre tabs */
+}
+
+    .am-tabs .nav-link {
+        border: 0 !important;
+        border-bottom: 5px solid transparent !important; /* underline só no ativo */
+        background: transparent !important;
+        padding: 0.95rem 0.1rem !important;
+        margin-bottom: -2px;
+        color: #6b7280 !important; /* cinza */
+        font-size: 1.45rem;
+        font-weight: 650;
+        line-height: 1.1;
+    }
+
+        .am-tabs .nav-link:hover {
+            color: #111827 !important;
+        }
+
+        .am-tabs .nav-link.active {
+            color: #111827 !important; /* preto */
+            border-bottom-color: #111827 !important; /* underline preto */
+        }
+
+    .am-tabs .am-tab-count {
+        color: inherit;
+        font-weight: 650;
+    }
+
+
+
+.js-userinfo {
+    cursor: pointer;
+}
+
+    .js-userinfo:hover {
+        opacity: .85;
+    }
+
+
+
+/* Carros: tabs coladas em btn-group (sem espaços) */
+.am-carros-btngroup {
+    flex-wrap: nowrap;
+}
+
+    .am-carros-btngroup .btn {
+        border-width: 2px;
+        padding: .85rem 1.4rem;
+        font-weight: 650;
+    }
+
+        /* cantos arredondados só nas pontas */
+        .am-carros-btngroup .btn:first-child {
+            border-top-left-radius: 14px;
+            border-bottom-left-radius: 14px;
+        }
+
+        .am-carros-btngroup .btn:last-child {
+            border-top-right-radius: 14px;
+            border-bottom-right-radius: 14px;
+        }
+
+        .am-carros-btngroup .btn:not(:first-child):not(:last-child) {
+            border-radius: 0;
+        }

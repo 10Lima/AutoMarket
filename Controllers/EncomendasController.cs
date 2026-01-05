@@ -34,12 +34,16 @@ public class EncomendasController : Controller
         if (!isComprador) return Forbid();
 
         var pendentes = await _marketDb.Encomenda
-            .AsNoTracking()
-            .Where(e => e.id_utilizador == idUtil.Value && e.estado == "pendente")
-            .Include(e => e.id_anuncioNavigation)
-                .ThenInclude(a => a.id_veiculoNavigation)
-            .OrderByDescending(e => e.data_encomenda)
-            .ToListAsync();
+    .AsNoTracking()
+    .Where(e => e.id_utilizador == idUtil.Value && e.estado == "pendente")
+    .Include(e => e.id_anuncioNavigation)
+        .ThenInclude(a => a.Anuncio_Imagem)
+            .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
+    .Include(e => e.id_anuncioNavigation)
+        .ThenInclude(a => a.id_veiculoNavigation)
+    .OrderByDescending(e => e.data_encomenda)
+    .ToListAsync();
+
 
         return View(pendentes);
     }
@@ -79,7 +83,10 @@ public class EncomendasController : Controller
             e.estado == "pendente");
 
         if (existente != null)
-            return RedirectToAction(nameof(Checkout), new { id = existente.id_encomenda });
+        {
+            TempData["InfoCarrinho"] = "Este anúncio já está no teu carrinho.";
+            return RedirectToAction(nameof(Carrinho)); // ✅ em vez de Checkout
+        }
 
         var encomenda = new Encomenda
         {
@@ -95,7 +102,8 @@ public class EncomendasController : Controller
         _marketDb.Encomenda.Add(encomenda);
         await _marketDb.SaveChangesAsync();
 
-        return RedirectToAction(nameof(Checkout), new { id = encomenda.id_encomenda });
+        TempData["InfoCarrinho"] = "Encomenda adicionada ao carrinho.";
+        return RedirectToAction(nameof(Carrinho)); // ✅ em vez de Checkout
     }
 
     [HttpGet]
@@ -110,6 +118,8 @@ public class EncomendasController : Controller
         var encomenda = await _marketDb.Encomenda
             .AsNoTracking()
             .Include(e => e.id_anuncioNavigation)
+            .ThenInclude(a => a.Anuncio_Imagem)
+            .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
             .FirstOrDefaultAsync(e =>
                 e.id_encomenda == id &&
                 e.id_utilizador == idUtil.Value &&
@@ -322,7 +332,7 @@ public class EncomendasController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Cancelar(long id, string? returnTo)
+    public async Task<IActionResult> Cancelar(long id, string? returnTo, string? returnUrl)
     {
         var idUtil = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtil == null) return Unauthorized();
@@ -343,6 +353,10 @@ public class EncomendasController : Controller
 
         TempData["InfoCarrinho"] = "Encomenda cancelada.";
 
+        // ✅ NOVO: voltar para URL local (ex.: Detalhes do anúncio)
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+
         // 🔁 Decidir para onde voltar
         if (string.Equals(returnTo, "MinhasOperacoes", StringComparison.OrdinalIgnoreCase))
             return RedirectToAction("MinhasOperacoes", "Anuncios");
@@ -350,6 +364,46 @@ public class EncomendasController : Controller
         // Default: volta para Carrinho
         return RedirectToAction(nameof(Carrinho));
     }
+
+
+
+    [HttpGet]
+    public async Task<IActionResult> ListaMinhasEncomendas(string estado = "todos", string ordem = "recent")
+    {
+        var idUtil = await _currentUser.GetMarketUserIdAsync(User);
+        if (idUtil == null) return Unauthorized();
+
+        var q = _marketDb.Encomenda
+            .Include(e => e.id_anuncioNavigation)
+                .ThenInclude(a => a.Anuncio_Imagem)
+                    .ThenInclude(ai => ai.id_imagem_anuncioNavigation)
+            .Where(e => e.id_utilizador == idUtil.Value);
+
+        // ✅ Filtro por estado
+        estado = (estado ?? "todos").Trim().ToLowerInvariant();
+        if (estado != "todos")
+        {
+            q = q.Where(e => e.estado != null && e.estado.ToLower() == estado);
+        }
+
+        // ✅ Ordenação simplificada (recent/oldest)
+        ordem = (ordem ?? "recent").Trim().ToLowerInvariant();
+        q = ordem switch
+        {
+            "oldest" => q.OrderBy(e => e.data_encomenda),
+            "recent" => q.OrderByDescending(e => e.data_encomenda),
+            _ => q.OrderByDescending(e => e.data_encomenda)
+        };
+
+        var lista = await q.ToListAsync();
+
+        ViewBag.Estado = estado;
+        ViewBag.Ordem = ordem;
+
+        return PartialView("_MinhasEncomendasLista", lista);
+    }
+
+
 
     // ============================================================
     // NOTIFICAÇÕES — Compra/Venda confirmada

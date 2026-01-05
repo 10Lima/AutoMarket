@@ -1,0 +1,14 @@
+@{
+    int idAnuncio = (int)(ViewBag.IdAnuncio ?? 0);
+}
+
+<form asp-controller="Visitas" asp-action="FormAgendar" method="get"
+      data-ajax="true"
+      data-ajax-method="GET"
+      data-ajax-update="#agendarSlot_@idAnuncio"
+      data-ajax-mode="replace">
+    <input type="hidden" name="idAnuncio" value="@idAnuncio" />
+    <button class="btn-am btn-am-ghost w-100" type="submit">
+        <i class="bi bi-calendar-check"></i> Agendar Visita
+    </button>
+</form>
