@@ -338,6 +338,49 @@ WHERE estado = N'agendada'
         return View();
     }
 
+
+    // ========================================
+    // GET: /Visitas/CountsGestaoVendedor
+    // devolve contagens por estado (para atualizar tabs via AJAX)
+    // ========================================
+    [HttpGet]
+    public async Task<IActionResult> CountsGestaoVendedor()
+    {
+        var idUtil = await _currentUser.GetMarketUserIdAsync(User);
+        if (idUtil is null) return Unauthorized();
+
+        // visitas de anúncios do vendedor
+        var q = from v in _marketDb.Visita.AsNoTracking()
+                join a in _marketDb.Anuncio.AsNoTracking() on v.id_anuncio equals a.id_anuncio
+                where a.id_vendedor == idUtil.Value
+                select v;
+
+        var grupos = await q
+            .GroupBy(v => (v.estado ?? "").Trim().ToLower())
+            .Select(g => new { estado = g.Key, count = g.Count() })
+            .ToListAsync();
+
+        int Get(string st) => grupos.FirstOrDefault(x => x.estado == st)?.count ?? 0;
+
+        var agendada = Get("agendada");
+        var pendente = Get("pendente");
+        var rejeitada = Get("rejeitada");
+        var cancelada = Get("cancelada");
+        var realizada = Get("realizada");
+        var todos = agendada + pendente + rejeitada + cancelada + realizada;
+
+        return Json(new
+        {
+            agendada,
+            pendente,
+            realizada,
+            rejeitada,
+            cancelada,
+            todos
+        });
+    }
+
+
     // ============================================================
     // LISTA (AJAX): /Visitas/ListaVisitas
     // ============================================================

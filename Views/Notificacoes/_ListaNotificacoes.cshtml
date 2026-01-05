@@ -1,0 +1,33 @@
+﻿@using AutoMarket.Models.Market
+@model List<Notificacao_Recebida>
+
+@{
+    var cNaoLidas = (int)(ViewBag.CountNaoLidas ?? 0);
+    var cLidas = (int)(ViewBag.CountLidas ?? 0);
+    var cTodas = (int)(ViewBag.CountTodas ?? (cNaoLidas + cLidas));
+}
+
+<div id="notifMeta"
+     data-nao-lidas="@cNaoLidas"
+     data-lidas="@cLidas"
+     data-todas="@cTodas"
+     style="display:none;"></div>
+
+@if (Model == null || Model.Count == 0)
+{
+    <div class="alert alert-light border text-center py-4 mb-0">
+        <i class="bi bi-inbox" style="font-size: 2.5rem; color: #ccc;"></i>
+        <p class="mt-2 mb-0 text-muted">Ainda não tens notificações para este filtro.</p>
+    </div>
+}
+else
+{
+    <div class="list-group am-notif-list" id="notifList">
+        @foreach (var n in Model)
+        {
+            <div id="nr-@n.id_recebida">
+                @await Html.PartialAsync("_NotificacaoItem", n)
+            </div>
+        }
+    </div>
+}

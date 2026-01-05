@@ -82,6 +82,13 @@
 
     </div>
 
+    @if (TempData["Erro"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["Erro"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
     @if (TempData["Msg"] != null)
     {
         <div class="alert alert-info alert-dismissible fade show">
@@ -89,6 +96,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
+
 
     <!-- TABS (SEM reload: só AJAX) -->
     <div class="tabs2" id="meusTabs">

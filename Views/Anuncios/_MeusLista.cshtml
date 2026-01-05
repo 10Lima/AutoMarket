@@ -167,11 +167,16 @@ else
                                         <i class="bi bi-pencil"></i> Editar
                                     </a>
 
-                                    @if (string.Equals(a.estado, "ativo", StringComparison.OrdinalIgnoreCase))
+                                    @if (string.Equals(a.estado, "ativo", StringComparison.OrdinalIgnoreCase) ||
+                                                            string.Equals(a.estado, "reservado", StringComparison.OrdinalIgnoreCase))
                                     {
+                                        var msg = string.Equals(a.estado, "reservado", StringComparison.OrdinalIgnoreCase)
+                                        ? "Pausar este anúncio? (Isto vai cancelar a reserva e possíveis visitas/encomendas pendentes)"
+                                        : "Pausar este anúncio?";
+
                                         <form asp-controller="Anuncios" asp-action="Pausar" method="post"
                                               class="d-inline"
-                                              onsubmit="return confirm('Pausar este anúncio?');">
+                                              onsubmit="return confirm('@msg');">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@a.id_anuncio" />
                                             <button class="btn btn-sm btn-outline-secondary" type="submit">
@@ -179,6 +184,7 @@ else
                                             </button>
                                         </form>
                                     }
+
                                     else if (string.Equals(a.estado, "inativo", StringComparison.OrdinalIgnoreCase))
                                     {
                                         <form asp-controller="Anuncios" asp-action="Ativar" method="post"
