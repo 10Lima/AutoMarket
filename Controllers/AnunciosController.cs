@@ -22,13 +22,16 @@ public class AnunciosController : Controller
     private readonly MarketplaceDbContext _marketDb;
     private readonly CurrentUserService _currentUser;
     private readonly IWebHostEnvironment _env;
+    private readonly ApplicationDbContext _appDb;
 
     public AnunciosController(
-        MarketplaceDbContext marketDb,
-        CurrentUserService currentUser,
-        IWebHostEnvironment env)
+    MarketplaceDbContext marketDb,
+    ApplicationDbContext appDb,
+    CurrentUserService currentUser,
+    IWebHostEnvironment env)
     {
         _marketDb = marketDb;
+        _appDb = appDb;
         _currentUser = currentUser;
         _env = env;
     }
@@ -577,40 +580,25 @@ public class AnunciosController : Controller
 
         var estado = (anuncio.estado ?? "").Trim().ToLowerInvariant();
 
-        // ✅ Público: ativo e reservado
-        if (estado is "ativo" or "reservado")
-            return View(anuncio);
-
-        // ✅ A partir daqui: privado (requer autenticação)
-        if (!User.Identity?.IsAuthenticated ?? true)
-            return Challenge(); // Força login
-
-        var idUtilizador = await GetCurrentMarketUserIdAsync();
-        if (idUtilizador is null)
-            return Forbid();
-
-        var isAdmin = await IsAdminAsync(idUtilizador.Value);
-        var isOwner = anuncio.id_vendedor == idUtilizador.Value;
-
-        // ✅ Rascunho/Inativo: só vendedor dono + admin
-        if (estado is "rascunho" or "inativo")
+        // ✅ Só rascunho é privado
+        if (estado == "rascunho")
         {
-            if (isOwner || isAdmin)
-                return View(anuncio);
-            return Forbid();
+            if (!User.Identity?.IsAuthenticated ?? true)
+                return Challenge();
+
+            var idUtilizador = await GetCurrentMarketUserIdAsync();
+            if (idUtilizador is null)
+                return Forbid();
+
+            var isAdmin = await IsAdminAsync(idUtilizador.Value);
+            var isOwner = anuncio.id_vendedor == idUtilizador.Value;
+
+            if (!isOwner && !isAdmin)
+                return Forbid();
         }
 
-        // ✅ Vendido: só vendedor + comprador + admin
-        if (estado == "vendido")
-        {
-            var isBuyer = await IsBuyerOfAnuncioAsync(idUtilizador.Value, anuncio.id_anuncio);
-            if (isOwner || isAdmin || isBuyer)
-                return View(anuncio);
-            return Forbid();
-        }
-
-        // ✅ Qualquer outro estado não previsto: bloqueia por defeito
-        return Forbid();
+        // ✅ Tudo o resto é público
+        return View(anuncio);
     }
 
     // ========================================
@@ -717,21 +705,34 @@ public class AnunciosController : Controller
                 data_acao = agora
             });
 
+
             // ===== 6) Notificações =====
+            var vendedorUsername = await GetUsernameByMarketUserIdAsync(anuncio.id_vendedor);
+            var detalhesUrl = LinkDetalhesAnuncio(anuncio.id_anuncio);
+
             var acao = "pausado";
             var tituloBase = string.IsNullOrWhiteSpace(anuncio.titulo) ? "Anúncio" : anuncio.titulo.Trim();
 
             // 6.1) Encomenda pendente cancelada
             if (compradoresEncomendaPendente.Count > 0)
             {
-                var payloadEnc = new { v = 1, origem = "encomenda", acao = "pausar", id_anuncio = anuncio.id_anuncio };
+                var payloadEnc = new
+                {
+                    v = 1,
+                    origem = "encomenda",
+                    acao = "pausar",
+                    id_anuncio = anuncio.id_anuncio,
+
+                    action_url = detalhesUrl,
+                    action_label = "Ver anúncio"
+                };
 
                 await CriarNotificacaoParaVariosAsync(
                     idsDestinatarios: compradoresEncomendaPendente,
                     idVendedor: anuncio.id_vendedor,
                     tipo: "encomenda_pendente_cancelada",
                     titulo: $"Anúncio {acao} — {tituloBase} (Encomenda pendente cancelada)",
-                    texto: $"A sua encomenda pendente foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    texto: $"A sua encomenda pendente foi cancelada porque o anúncio foi {acao} pelo vendedor {vendedorUsername}.",
                     payload: payloadEnc
                 );
             }
@@ -739,14 +740,23 @@ public class AnunciosController : Controller
             // 6.2) Reserva cancelada
             if (reservadores.Count > 0)
             {
-                var payloadReserva = new { v = 1, origem = "pausar", id_anuncio = anuncio.id_anuncio, motivo = "reserva" };
+                var payloadReserva = new
+                {
+                    v = 1,
+                    origem = "pausar",
+                    id_anuncio = anuncio.id_anuncio,
+                    motivo = "reserva",
+
+                    action_url = detalhesUrl,
+                    action_label = "Ver anúncio"
+                };
 
                 await CriarNotificacaoParaVariosAsync(
                     idsDestinatarios: reservadores,
                     idVendedor: anuncio.id_vendedor,
                     tipo: "anuncio_pausado",
                     titulo: $"Anúncio {acao} — {tituloBase} (Reserva cancelada)",
-                    texto: $"A sua reserva foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    texto: $"A sua reserva foi cancelada porque o anúncio foi {acao} pelo vendedor {vendedorUsername}.",
                     payload: payloadReserva
                 );
             }
@@ -754,14 +764,23 @@ public class AnunciosController : Controller
             // 6.3) Visita cancelada
             if (visitantes.Count > 0)
             {
-                var payloadVisita = new { v = 1, origem = "pausar", id_anuncio = anuncio.id_anuncio, motivo = "visita" };
+                var payloadVisita = new
+                {
+                    v = 1,
+                    origem = "pausar",
+                    id_anuncio = anuncio.id_anuncio,
+                    motivo = "visita",
+
+                    action_url = detalhesUrl,
+                    action_label = "Ver anúncio"
+                };
 
                 await CriarNotificacaoParaVariosAsync(
                     idsDestinatarios: visitantes,
                     idVendedor: anuncio.id_vendedor,
                     tipo: "anuncio_pausado",
                     titulo: $"Anúncio {acao} — {tituloBase} (Visita cancelada)",
-                    texto: $"A sua visita foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    texto: $"A sua visita foi cancelada porque o anúncio foi {acao} pelo vendedor {vendedorUsername}.",
                     payload: payloadVisita
                 );
             }
@@ -927,47 +946,77 @@ public class AnunciosController : Controller
             await _marketDb.SaveChangesAsync();
 
             // ===== 2) Notificações ANTES do delete =====
+            var vendedorUsername = await GetUsernameByMarketUserIdAsync(anuncio.id_vendedor);
+            var detalhesUrl = LinkDetalhesAnuncio(idAnuncio);
+
             var acao = "removido";
             var tituloBase = string.IsNullOrWhiteSpace(anuncio.titulo) ? "Anúncio" : anuncio.titulo.Trim();
 
             if (compradoresEncomendaPendente.Count > 0)
             {
-                var payloadEnc = new { v = 1, origem = "encomenda", acao = "remover", id_anuncio = idAnuncio };
+                var payloadEnc = new
+                {
+                    v = 1,
+                    origem = "encomenda",
+                    acao = "pausar",
+                    id_anuncio = anuncio.id_anuncio,
+
+                    action_url = detalhesUrl,
+                    action_label = "Ver anúncio"
+                };
 
                 await CriarNotificacaoParaVariosAsync(
                     idsDestinatarios: compradoresEncomendaPendente,
                     idVendedor: anuncio.id_vendedor,
                     tipo: "encomenda_pendente_cancelada",
                     titulo: $"Anúncio {acao} — {tituloBase} (Encomenda pendente cancelada)",
-                    texto: $"A sua encomenda pendente foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    texto: $"A sua encomenda pendente foi cancelada porque o anúncio foi {acao} pelo vendedor {vendedorUsername}.",
                     payload: payloadEnc
                 );
             }
 
             if (reservadores.Count > 0)
             {
-                var payloadReserva = new { v = 1, origem = "remover", id_anuncio = idAnuncio, motivo = "reserva" };
+                var payloadReserva = new
+                {
+                    v = 1,
+                    origem = "pausar",
+                    id_anuncio = anuncio.id_anuncio,
+                    motivo = "reserva",
+
+                    action_url = detalhesUrl,
+                    action_label = "Ver anúncio"
+                };
 
                 await CriarNotificacaoParaVariosAsync(
                     idsDestinatarios: reservadores,
                     idVendedor: anuncio.id_vendedor,
-                    tipo: "anuncio_removido",
+                    tipo: "anuncio_pausado",
                     titulo: $"Anúncio {acao} — {tituloBase} (Reserva cancelada)",
-                    texto: $"A sua reserva foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    texto: $"A sua reserva foi cancelada porque o anúncio foi {acao} pelo vendedor {vendedorUsername}.",
                     payload: payloadReserva
                 );
             }
 
             if (visitantes.Count > 0)
             {
-                var payloadVisita = new { v = 1, origem = "remover", id_anuncio = idAnuncio, motivo = "visita" };
+                var payloadVisita = new
+                {
+                    v = 1,
+                    origem = "pausar",
+                    id_anuncio = anuncio.id_anuncio,
+                    motivo = "visita",
+
+                    action_url = detalhesUrl,
+                    action_label = "Ver anúncio"
+                };
 
                 await CriarNotificacaoParaVariosAsync(
                     idsDestinatarios: visitantes,
                     idVendedor: anuncio.id_vendedor,
-                    tipo: "anuncio_removido",
+                    tipo: "anuncio_pausado",
                     titulo: $"Anúncio {acao} — {tituloBase} (Visita cancelada)",
-                    texto: $"A sua visita foi cancelada porque o anúncio foi {acao} pelo vendedor.",
+                    texto: $"A sua visita foi cancelada porque o anúncio foi {acao} pelo vendedor {vendedorUsername}.",
                     payload: payloadVisita
                 );
             }
@@ -2324,6 +2373,7 @@ public class AnunciosController : Controller
         reserva.estado = "cancelada";
         _marketDb.Reserva.Update(reserva); // opcional (podes até não pôr, porque a entidade já está tracked)
 
+
         if (string.Equals(anuncio.estado, "reservado", StringComparison.OrdinalIgnoreCase))
         {
             anuncio.estado = "ativo";
@@ -2357,6 +2407,30 @@ public class AnunciosController : Controller
         var c = (canalPreferido ?? "").Trim().ToLowerInvariant();
         return (c == "sms") ? "sms" : "email"; // default email
     }
+
+    private async Task<string> GetUsernameByMarketUserIdAsync(int idUtilizador)
+    {
+        var u = await _marketDb.Utilizador
+            .AsNoTracking()
+            .Where(x => x.id_utilizador == idUtilizador)
+            .Select(x => new { x.identity_user_id, x.nome })
+            .FirstOrDefaultAsync();
+
+        if (u == null) return $"user#{idUtilizador}";
+
+        var username = await _appDb.Users
+            .AsNoTracking()
+            .Where(x => x.Id == u.identity_user_id)
+            .Select(x => x.UserName)
+            .FirstOrDefaultAsync();
+
+        return !string.IsNullOrWhiteSpace(username) ? username! : (u.nome ?? $"user#{idUtilizador}");
+    }
+
+    private string LinkDetalhesAnuncio(int idAnuncio)
+        => Url.Action("Detalhes", "Anuncios", new { id = idAnuncio }) ?? $"/Anuncios/Detalhes/{idAnuncio}";
+
+
 
     private async Task CriarNotificacaoMarcaFavoritaAsync(int idAnuncio)
     {
@@ -2394,13 +2468,19 @@ public class AnunciosController : Controller
         if (destinatarios.Count == 0) return;
 
         // Conteúdo da notificação (1 registo)
+        var detalhesUrl = LinkDetalhesAnuncio(info.id_anuncio);
+
         var payload = new
         {
             v = 1,
             origem = "marca_favorita",
             id_anuncio = info.id_anuncio,
-            id_marca = info.idMarca
+            id_marca = info.idMarca,
+
+            action_url = detalhesUrl,
+            action_label = "Ver anúncio"
         };
+
 
         var notif = new Notificacao
         {
@@ -2437,6 +2517,8 @@ public class AnunciosController : Controller
     // ============================================================
     private async Task AdicionarNotif_AnuncioReservado_VendedorAsync(Anuncio anuncio, int idComprador, DateTime dataExpiracaoUtc)
     {
+        var compradorUsername = await GetUsernameByMarketUserIdAsync(idComprador);
+
         // Preferências do vendedor (na tabela market.Utilizador)
         var vendedorPrefs = await _marketDb.Utilizador
             .FirstOrDefaultAsync(u => u.id_utilizador == anuncio.id_vendedor);
@@ -2457,8 +2539,8 @@ public class AnunciosController : Controller
             tipo = "anuncio_reservado_vendedor",
             titulo = "O teu anúncio foi reservado",
             texto = string.IsNullOrWhiteSpace(anuncio.titulo)
-                ? "Um comprador reservou o teu anúncio."
-                : $"Um comprador reservou o teu anúncio: {anuncio.titulo}",
+            ? $"Um comprador reservou o teu anúncio. O comprador: {compradorUsername}."
+            : $"Um comprador reservou o teu anúncio: {anuncio.titulo}. O comprador: {compradorUsername}.",
             payload_json = JsonSerializer.Serialize(payload)
         };
 
@@ -2476,6 +2558,8 @@ public class AnunciosController : Controller
 
     private async Task AdicionarNotif_ReservaCancelada_VendedorAsync(Reserva reserva, Anuncio anuncio)
     {
+        var compradorUsername = await GetUsernameByMarketUserIdAsync(reserva.id_utilizador);
+
         var vendedorPrefs = await _marketDb.Utilizador
             .FirstOrDefaultAsync(u => u.id_utilizador == anuncio.id_vendedor);
 
@@ -2495,8 +2579,8 @@ public class AnunciosController : Controller
             tipo = "reserva_cancelada_vendedor",
             titulo = "Reserva cancelada",
             texto = string.IsNullOrWhiteSpace(anuncio.titulo)
-                ? "O comprador cancelou a reserva do teu anúncio."
-                : $"O comprador cancelou a reserva do teu anúncio: {anuncio.titulo}",
+            ? $"O comprador cancelou a reserva do teu anúncio. O comprador: {compradorUsername}."
+            : $"O comprador cancelou a reserva do teu anúncio: {anuncio.titulo}. O comprador: {compradorUsername}.",
             payload_json = JsonSerializer.Serialize(payload)
         };
 

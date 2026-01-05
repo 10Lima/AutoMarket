@@ -1,13 +1,38 @@
-@using AutoMarket.Models.Market
+﻿@using AutoMarket.Models.Market
+@using System.Text.Json
 @model Notificacao_Recebida
 
 @{
     var notif = Model.id_notificacaoNavigation;
     var isLida = string.Equals(Model.estado, "lida", StringComparison.OrdinalIgnoreCase);
 
-    // v�m do controller (Lista/MarcarLida) para manter filtro ativo
+    // vêm do controller (Lista/MarcarLida) para manter filtro ativo
     var estadoAtual = (string)(ViewBag.Estado ?? "nao_lidas");
     var ordemAtual = (string)(ViewBag.Ordem ?? "recent");
+
+    // CTA (link) vindo do payload_json
+    string? actionUrl = null;
+    string? actionLabel = null;
+
+    var payload = notif?.payload_json;
+    if (!string.IsNullOrWhiteSpace(payload))
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(payload);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("action_url", out var pUrl) && pUrl.ValueKind == JsonValueKind.String)
+                actionUrl = pUrl.GetString();
+
+            if (root.TryGetProperty("action_label", out var pLabel) && pLabel.ValueKind == JsonValueKind.String)
+                actionLabel = pLabel.GetString();
+        }
+        catch
+        {
+            // payload inválido -> ignora CTA
+        }
+    }
 }
 
 <div class="list-group-item am-notif-item @(isLida ? "is-read" : "is-unread")">
@@ -20,10 +45,21 @@
                 <div class="text-muted mt-1">@notif.texto</div>
             }
 
+            @* ✅ CTA (link) *@
+            @if (!string.IsNullOrWhiteSpace(actionUrl))
+            {
+                <div class="mt-2">
+                    <a class="btn btn-sm btn-primary"
+                       href="@Url.Content(actionUrl)">
+                        <i class="bi bi-box-arrow-up-right"></i> @(actionLabel ?? "Abrir")
+                    </a>
+                </div>
+            }
+
             <div class="text-muted small mt-2">
                 <i class="bi bi-clock"></i>
                 @Model.data_envio.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-                <span class="mx-2">�</span>
+                <span class="mx-2">•</span>
                 <span>Tipo: @notif?.tipo</span>
             </div>
         </div>
@@ -41,7 +77,7 @@
                       data-ajax="true"
                       data-ajax-method="POST"
                       data-ajax-mode="replace"
-                      data-ajax-update="#notifContainer">
+                      data-ajax-update="#notifContainer">\
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="idRecebida" value="@Model.id_recebida" />
                     <input type="hidden" name="estado" value="@estadoAtual" />

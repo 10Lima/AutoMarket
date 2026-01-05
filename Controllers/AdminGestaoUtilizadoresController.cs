@@ -161,6 +161,8 @@ public class AdminGestaoUtilizadoresController : Controller
                 motivo = string.IsNullOrWhiteSpace(motivo) ? null : motivo
             });
 
+            var actionUrl = Url.Action("Carros", "Anuncios") ?? "/Anuncios/Carros";
+
             AddNotificacaoParaUtilizador(
                 alvo: u,
                 idAdminAutor: adminId.Value,
@@ -169,7 +171,9 @@ public class AdminGestaoUtilizadoresController : Controller
                 texto: string.IsNullOrWhiteSpace(motivo)
                     ? "A tua conta foi desbloqueada por um administrador."
                     : $"A tua conta foi desbloqueada por um administrador. Motivo: {motivo}",
-                motivo: string.IsNullOrWhiteSpace(motivo) ? null : motivo
+                motivo: string.IsNullOrWhiteSpace(motivo) ? null : motivo,
+                actionUrl: actionUrl,
+                actionLabel: "Ver carros"
             );
 
             await _marketDb.SaveChangesAsync();
@@ -322,7 +326,9 @@ public class AdminGestaoUtilizadoresController : Controller
                 texto: string.IsNullOrWhiteSpace(motivo)
                     ? "Os teus privilégios de administrador foram recuperados."
                     : $"Os teus privilégios de administrador foram recuperados. Motivo: {motivo}",
-                motivo: string.IsNullOrWhiteSpace(motivo) ? null : motivo
+                motivo: string.IsNullOrWhiteSpace(motivo) ? null : motivo,
+                actionUrl: "https://localhost:7050/",
+                actionLabel: "HomePage"
             );
 
             await _marketDb.SaveChangesAsync();
@@ -463,7 +469,9 @@ public class AdminGestaoUtilizadoresController : Controller
         string tipo,
         string titulo,
         string texto,
-        string? motivo = null)
+        string? motivo = null,
+        string? actionUrl = null,
+        string? actionLabel = null)
     {
         var canal = NormalizarCanalEmailSms(alvo.canal_notificacao_preferido);
         var estado = EstadoInicialParaEnvioExterno(alvo.notificar_novidades, canal);
@@ -475,7 +483,9 @@ public class AdminGestaoUtilizadoresController : Controller
             tipo,
             id_admin = idAdminAutor,
             id_utilizador = alvo.id_utilizador,
-            motivo
+            motivo,
+            action_url = actionUrl,
+            action_label = actionLabel
         };
 
         var notif = new Notificacao
@@ -489,7 +499,7 @@ public class AdminGestaoUtilizadoresController : Controller
         _marketDb.Notificacao_Recebida.Add(new Notificacao_Recebida
         {
             id_utilizador = alvo.id_utilizador,
-            id_notificacaoNavigation = notif, // EF cria Notificacao + Recebida
+            id_notificacaoNavigation = notif,
             data_envio = DateTime.UtcNow,
             canal = canal,
             estado = estado

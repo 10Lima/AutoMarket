@@ -8,28 +8,23 @@
 @if (User.Identity?.IsAuthenticated == true && isAdmin)
 {
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-controller="AdminCandidaturas" asp-action="Index">Candidaturas</a>
+        <a class="nav-link" asp-controller="AdminCandidaturas" asp-action="Index">Candidaturas</a>
     </li>
-
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-controller="AdminAcoes" asp-action="Index">Histórico</a>
+        <a class="nav-link" asp-controller="AdminAcoes" asp-action="Index">Histórico</a>
     </li>
-
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-controller="AdminGestaoUtilizadores" asp-action="Index">Utilizadores</a>
+        <a class="nav-link" asp-controller="AdminGestaoUtilizadores" asp-action="Index">Utilizadores</a>
     </li>
-
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register" asp-route-admin="true">
+        <a class="nav-link" asp-area="Identity" asp-page="/Account/Register" asp-route-admin="true">
             Registar admins
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-controller="AdminEstatisticas" asp-action="Index">Estatísticas</a>
+        <a class="nav-link" asp-controller="AdminEstatisticas" asp-action="Index">Estatísticas</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-controller="AdminSobreNos" asp-action="Index">Gerir Sobre Nós</a>
+        <a class="nav-link" asp-controller="AdminSobreNos" asp-action="Index">Gerir Sobre Nós</a>
     </li>
-
-
 }

@@ -45,7 +45,7 @@ public class VenderController : Controller
 
         if (!User.Identity?.IsAuthenticated ?? true)
         {
-            return RedirectToPage("/Account/Register", new
+            return RedirectToPage("/Account/Login", new
             {
                 area = "Identity",
                 returnUrl = Url.Action("Comecar", "Vender")
@@ -55,7 +55,7 @@ public class VenderController : Controller
         var idUtilizador = await _currentUser.GetMarketUserIdAsync(User);
         if (idUtilizador is null)
         {
-            return RedirectToPage("/Account/Register", new { area = "Identity" });
+            return RedirectToPage("/Account/Login", new { area = "Identity" });
         }
 
         // Já é vendedor?

@@ -18,7 +18,7 @@ html {
 }
 
 body {
-    margin-bottom: 60px;
+    margin-bottom: 0 !important;
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
@@ -664,8 +664,6 @@ body {
 
 
 
-
-
 /* =========================================================
    AM TABS (estilo Anuncios/Meus): underline + texto grande
    ========================================================= */
@@ -752,4 +750,270 @@ body {
 
 .am-notif-item.is-read {
     opacity: .75;
+}
+
+
+
+
+
+
+/* ============================================================ LAYOUT ========================================================== */
+/* ============================================================ LAYOUT ========================================================== */
+/* ============================================================ LAYOUT ========================================================== */
+
+/* =========================================================
+   NAVBAR: preta + texto/ícones brancos + altura + hover full-height
+   (sem mexer no _LoginPartial)
+   ========================================================= */
+
+/* --- Ajustes manuais aqui --- */
+:root {
+    --am-navbar-height: 96px; /* ALTURA da barra preta */
+    --am-navbar-link-pad-x: 14px; /* padding lateral dos links */
+    --am-navbar-hover-bg: rgba(255, 255, 255, 0.15); /* fundo hover */
+    --am-navbar-active-bg: rgba(255, 255, 255, 0.10); /* fundo ativo */
+}
+
+/* Barra preta com altura controlada */
+.am-navbar {
+    background-color: #000 !important;
+    min-height: var(--am-navbar-height);
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+    /* Força cor branca para tudo dentro da navbar (inclui o que vem do _LoginPartial) */
+    .am-navbar a,
+    .am-navbar .nav-link,
+    .am-navbar .navbar-brand,
+    .am-navbar .navbar-text,
+    .am-navbar .btn-link,
+    .am-navbar i,
+    .am-navbar .bi {
+        color: #fff !important;
+    }
+
+    /* Se existir text-dark lá dentro (ex: no _LoginPartial), neutraliza só dentro da navbar */
+    .am-navbar .text-dark {
+        color: #fff !important;
+    }
+
+    /* Toggler mais visível em fundo preto */
+    .am-navbar .navbar-toggler {
+        border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    /* Dropdowns (se existirem) */
+    .am-navbar .dropdown-menu {
+        background-color: #111 !important;
+    }
+
+    .am-navbar .dropdown-item {
+        color: #fff !important;
+    }
+
+        .am-navbar .dropdown-item:hover,
+        .am-navbar .dropdown-item:focus {
+            background-color: #1b1b1b !important;
+        }
+
+/* =========================================================
+   HOVER/CLICK: “retângulo” do tamanho total da barra (desktop)
+   ========================================================= */
+
+/* Em desktop (navbar-expand-sm => >=576px), estica tudo à altura da navbar */
+@media (min-width: 576px) {
+    .am-navbar .container-fluid,
+    .am-navbar .navbar-collapse {
+        align-self: stretch;
+    }
+
+    .am-navbar .navbar-nav {
+        height: var(--am-navbar-height);
+        align-items: stretch;
+    }
+
+        .am-navbar .navbar-nav .nav-item {
+            display: flex;
+            align-items: stretch;
+        }
+
+        /* O link passa a ser o “retângulo” com altura total */
+        .am-navbar .navbar-nav .nav-link {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding-top: 0;
+            padding-bottom: 0;
+            padding-left: var(--am-navbar-link-pad-x);
+            padding-right: var(--am-navbar-link-pad-x);
+            border-radius: 0; /* para preencher até cima/baixo */
+            transition: background-color .15s ease, color .15s ease;
+        }
+}
+
+/* Em mobile (menu colapsado), mantém aspeto “normal” com retângulo suave */
+@media (max-width: 575.98px) {
+    .am-navbar .navbar-nav .nav-link {
+        display: block;
+        padding-left: var(--am-navbar-link-pad-x);
+        padding-right: var(--am-navbar-link-pad-x);
+        padding-top: 10px;
+        padding-bottom: 10px;
+        border-radius: 10px;
+        transition: background-color .15s ease, color .15s ease;
+    }
+}
+
+/* Hover/focus: fundo acinzentado (e continua clicável porque é o próprio <a>) */
+.am-navbar .navbar-nav .nav-link:hover,
+.am-navbar .navbar-nav .nav-link:focus {
+    background-color: var(--am-navbar-hover-bg) !important;
+    color: #fff !important;
+}
+
+/* Estado ativo */
+.am-navbar .navbar-nav .nav-link.active {
+    background-color: var(--am-navbar-active-bg) !important;
+    color: #fff !important;
+}
+
+/* =========================================================
+   NAVBAR PRINCIPAL: aumentar tamanho dos links (só layout original)
+   Requeres: class="... am-navbar am-navbar-main ..."
+   ========================================================= */
+
+.am-navbar-main .nav-link {
+    font-size: 1.05rem; /* ajusta aqui */
+}
+
+.am-navbar-main .navbar-brand {
+    font-size: 1.15rem; /* ajusta aqui */
+}
+
+/* Opcional: aumentar ícones no layout principal */
+.am-navbar-main .nav-link i,
+.am-navbar-main .nav-link .bi {
+    font-size: 1.1rem; /* ajusta aqui */
+}
+
+
+/* ===== Corrigir link do username ficar cinzento após clique (focus/active) ===== */
+.am-navbar .nav-link:focus,
+.am-navbar .nav-link:focus-visible,
+.am-navbar .nav-link:active,
+.am-navbar .dropdown-toggle:focus,
+.am-navbar .dropdown-toggle:focus-visible,
+.am-navbar .dropdown-toggle:active {
+    color: #fff !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Se o username for dropdown e ficar "aberto", mantém branco também */
+.am-navbar .nav-item.dropdown.show > .nav-link {
+    color: #fff !important;
+}
+
+
+
+
+/* ============================================================ HOME ========================================================== */
+/* ============================================================ HOME ========================================================== */
+/* ============================================================ HOME ========================================================== */
+
+/* =========================================================
+   HOME/INDEX: splash simples com fundo opcional (full bleed)
+   ========================================================= */
+
+/* Dica: mete a imagem em wwwroot/images/home-bg.jpg
+   e troca o URL abaixo se quiseres outra. */
+.am-home-splash {
+    /* Faz “full width” mesmo estando dentro do .container do layout */
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    /* Altura do ecrã (desconta a navbar se existir variável) */
+    min-height: calc(100vh - var(--am-navbar-height, var(--am-navbar-min-height, 0px)));
+    /* Fundo (opcional) */
+    background-image: url("/img/home-bg.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px;
+}
+
+    /* Overlay para legibilidade (podes ajustar opacidade) */
+    .am-home-splash::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+    }
+
+/* Conteúdo acima do overlay */
+.am-home-content {
+    position: relative;
+    z-index: 1;
+    color: #fff;
+}
+
+.am-home-title {
+    font-size: clamp(56px, 8vw, 110px);
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin: 0 0 10px 0;
+}
+
+.am-home-by {
+    font-size: 22px;
+    opacity: 0.9;
+    margin-bottom: 18px;
+}
+
+.am-home-names li {
+    font-size: 22px;
+    line-height: 1.7;
+}
+
+.am-home-code {
+    opacity: 0.85;
+    margin-left: 8px;
+}
+
+/* Botão Home -> Carros (preto com letras brancas) */
+.am-home-btn {
+    margin-top: 22px;
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-weight: 700;
+    background: #000;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.35);
+}
+
+    .am-home-btn:hover,
+    .am-home-btn:focus {
+        background: rgba(0,0,0,0.85);
+        color: #fff;
+        border-color: rgba(255,255,255,0.55);
+    }
+
+/* AutoMarket (brand) a negrito na navbar */
+.am-navbar .navbar-brand {
+    font-weight: 800 !important;
+}
+
+/* ===== HOME: indicador "(Modo Admin)" ===== */
+.am-home-admin {
+    font-size: 22px;
+    font-weight: 700;
+    opacity: 0.95;
+    margin-top: 6px;
+    margin-bottom: 10px;
+    color: #fff; /* branco para contrastar com o fundo escuro */
 }
