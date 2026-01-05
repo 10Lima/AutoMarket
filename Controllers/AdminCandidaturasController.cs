@@ -375,23 +375,40 @@ public class AdminCandidaturasController : Controller
 
     private async Task CriarNotif_CandidaturaAprovada_UtilizadorAsync(Candidatura_Vendedor candidatura)
     {
+        var actionUrl = Url.Action("Criar", "Anuncios") ?? "/Anuncios/Criar";
+
         await CriarNotif_ParaUmUtilizadorAsync(
             idUtilizador: candidatura.id_utilizador,
             tipo: "candidatura_aprovada",
             titulo: "Candidatura aprovada",
             texto: "A tua candidatura foi aprovada. Já podes começar a vender.",
-            payload: new { v = 1, id_candidatura = candidatura.id_candidatura }
+            payload: new
+            {
+                v = 1,
+                id_candidatura = candidatura.id_candidatura,
+                action_url = actionUrl,
+                action_label = "Criar anúncio"
+            }
         );
     }
 
     private async Task CriarNotif_CandidaturaRejeitada_UtilizadorAsync(Candidatura_Vendedor candidatura, string motivo)
     {
+        var actionUrl = Url.Action("Candidatar", "Vender") ?? "/Vender/Candidatar";
+
         await CriarNotif_ParaUmUtilizadorAsync(
             idUtilizador: candidatura.id_utilizador,
             tipo: "candidatura_rejeitada",
             titulo: "Candidatura rejeitada",
             texto: $"A tua candidatura foi rejeitada. Motivo: {motivo}",
-            payload: new { v = 1, id_candidatura = candidatura.id_candidatura, motivo }
+            payload: new
+            {
+                v = 1,
+                id_candidatura = candidatura.id_candidatura,
+                motivo,
+                action_url = actionUrl,
+                action_label = "Submeter nova candidatura"
+            }
         );
     }
 

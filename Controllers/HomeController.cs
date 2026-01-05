@@ -1,11 +1,14 @@
-using System.Diagnostics;
+using AutoMarket.Data;
+using AutoMarket.Models;          // (para ErrorViewModel)
+using AutoMarket.Models.Market;   // (para Informacoes_Market)
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using AutoMarket.Data;
-using AutoMarket.Models;          // (para ErrorViewModel)
-using AutoMarket.Models.Market;   // (para Informacoes_Market)
+using System.Diagnostics;
+using AutoMarket.Services;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace AutoMarket.Controllers
 {
@@ -13,18 +16,32 @@ namespace AutoMarket.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly MarketplaceDbContext _marketDb;
+        private readonly CurrentUserService _currentUser;
 
-        public HomeController(ILogger<HomeController> logger, MarketplaceDbContext marketDb)
+        public HomeController(ILogger<HomeController> logger, MarketplaceDbContext marketDb, CurrentUserService currentUser)
         {
             _logger = logger;
             _marketDb = marketDb;
+            _currentUser = currentUser;
         }
 
         [AllowAnonymous]
         public IActionResult Index()
         {
-            return View();
+            return View(); // SEM redirect
         }
+
+        [AllowAnonymous]
+        public async Task<IActionResult> Landing()
+        {
+            // Admin: abre Home/Index
+            if (User?.Identity?.IsAuthenticated == true && await _currentUser.IsAdminAsync(User))
+                return RedirectToAction(nameof(Index));
+
+            // Restantes: abre Anuncios/Carros
+            return RedirectToAction("Carros", "Anuncios");
+        }
+
 
         // NOVO: Sobre Nós (substitui o conteúdo do antigo Privacy)
         [AllowAnonymous]

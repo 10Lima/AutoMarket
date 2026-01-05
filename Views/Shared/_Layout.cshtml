@@ -20,11 +20,16 @@
     @{
         // ✅ Detectar se o utilizador autenticado é admin (Razor suporta await)
         var isAdmin = User?.Identity?.IsAuthenticated == true
-        ? await CurrentUser.IsAdminAsync(User)
-        : false;
+            ? await CurrentUser.IsAdminAsync(User)
+            : false;
+
+        // ✅ Detectar se estamos na Home/Index
+        var controller = (ViewContext.RouteData.Values["controller"]?.ToString() ?? "");
+        var action = (ViewContext.RouteData.Values["action"]?.ToString() ?? "");
+        var isHomeIndex = controller == "Home" && action == "Index";
     }
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark am-navbar am-navbar-main border-bottom box-shadow @(isHomeIndex ? "" : "mb-3")">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">AutoMarket</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
@@ -34,52 +39,54 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="SobreNos">Sobre Nós</a>
-                        </li>
-
-                        @* ✅ Só mostra "+ Começar a vender" se NÃO for admin *@
-                        @if (!isAdmin)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Vender" asp-action="Comecar">+ Começar a vender</a>
-                            </li>
-                        }
-
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Anuncios" asp-action="Carros">
-                                <i class="bi bi-car-front"></i> Carros
-                            </a>
+                            <a class="nav-link" asp-controller="Anuncios" asp-action="Carros">Carros</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="Marcas" asp-action="Index">As Nossas Marcas</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Notificacoes" asp-action="Index">Notificações</a>
+                            <a class="nav-link" asp-controller="Notificacoes" asp-action="Index">Notificações</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Home" asp-action="SobreNos">Sobre Nós</a>
                         </li>
 
                         <partial name="_AdminMenuPartial" />
                     </ul>
-                    <partial name="_LoginPartial" />
+
+                    <div class="d-flex align-items-center gap-2">
+                        @* ✅ Só mostra "+ Vender" se NÃO for admin *@
+                        @if (!isAdmin)
+                        {
+                            <ul class="navbar-nav">
+                                <li class="nav-item">
+                                    <a class="nav-link fw-bold text-success" asp-controller="Vender" asp-action="Comecar">
+                                        <i class="bi bi-plus-circle me-1"></i>Vender
+                                    </a>
+                                </li>
+                            </ul>
+                        }
+
+                        <partial name="_LoginPartial" />
+                    </div>
                 </div>
             </div>
         </nav>
     </header>
 
     <div class="container">
-        <main role="main" class="pb-3">
+        <main role="main">
             @RenderBody()
         </main>
     </div>
 
+    @*
     <footer class="border-top footer text-muted">
         <div class="container">
             &copy; 2025 - AutoMarket - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
-
+    *@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/jqueryui/jquery-ui.js"></script>
     <script src="~/lib/jquery-ajax/jquery.unobtrusive-ajax.js"></script>

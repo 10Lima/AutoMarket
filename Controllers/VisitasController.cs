@@ -16,11 +16,16 @@ namespace AutoMarket.Controllers;
 public class VisitasController : Controller
 {
     private readonly MarketplaceDbContext _marketDb;
+    private readonly ApplicationDbContext _appDb;
     private readonly CurrentUserService _currentUser;
 
-    public VisitasController(MarketplaceDbContext marketDb, CurrentUserService currentUser)
+    public VisitasController(
+        MarketplaceDbContext marketDb,
+        ApplicationDbContext appDb,
+        CurrentUserService currentUser)
     {
         _marketDb = marketDb;
+        _appDb = appDb;
         _currentUser = currentUser;
     }
 
@@ -74,6 +79,33 @@ WHERE estado = N'agendada'
     // ============================================================
     // HELPERS PARA NOTIFICAÇÕES
     // ============================================================
+
+    private async Task<string> GetUsernameByMarketUserIdAsync(int idUtilizador)
+    {
+        var identityId = await _marketDb.Utilizador
+            .AsNoTracking()
+            .Where(u => u.id_utilizador == idUtilizador)
+            .Select(u => u.identity_user_id)
+            .FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(identityId))
+            return $"user#{idUtilizador}";
+
+        var username = await _appDb.Users
+            .AsNoTracking()
+            .Where(u => u.Id == identityId)
+            .Select(u => u.UserName)
+            .FirstOrDefaultAsync();
+
+        return string.IsNullOrWhiteSpace(username) ? $"user#{idUtilizador}" : username!;
+    }
+
+    private static string AnuncioComTitulo(string? titulo)
+    {
+        var t = (titulo ?? "").Trim();
+        return string.IsNullOrWhiteSpace(t) ? "o anúncio" : $"o anúncio: {t}";
+    }
+
     private static string NormalizarCanalEmailSms(string? canalPreferido)
     {
         var c = (canalPreferido ?? "").Trim().ToLowerInvariant();
@@ -268,20 +300,23 @@ WHERE estado = N'agendada'
         {
             await _marketDb.SaveChangesAsync();
 
-            // ✅ NOTIFICAÇÃO 1: Vendedor recebe "Pedido de visita"
+            // ✅ Obter username do comprador
+            var compradorUsername = await GetUsernameByMarketUserIdAsync(idUtil.Value);
+            var anuncioTxt = AnuncioComTitulo(anuncio.titulo);
+
             var payload = new
             {
                 v = 1,
                 id_visita = visita.id_visita,
                 id_anuncio = visita.id_anuncio,
-                data_visita = visita.data_visita
+                data_visita = visita.data_visita,
             };
 
             await CriarNotificacaoParaUtilizadorAsync(
                 anuncio.id_vendedor,
                 "visita_pendente",
                 "Novo pedido de visita",
-                "Um comprador pediu uma visita ao teu anúncio.",
+                $"O comprador {compradorUsername} pediu uma visita ao {anuncioTxt}.",
                 payload
             );
 
@@ -467,20 +502,23 @@ WHERE estado = N'agendada'
             {
                 await _marketDb.SaveChangesAsync();
 
-                // ✅ NOTIFICAÇÃO 2: Comprador recebe "Visita agendada"
+                // ✅ Obter username do vendedor
+                var vendedorUsername = await GetUsernameByMarketUserIdAsync(visita.id_anuncioNavigation.id_vendedor);
+                var anuncioTxt = AnuncioComTitulo(visita.id_anuncioNavigation.titulo);
+
                 var payload = new
                 {
                     v = 1,
                     id_visita = visita.id_visita,
                     id_anuncio = visita.id_anuncio,
-                    data_visita = visita.data_visita
+                    data_visita = visita.data_visita,
                 };
 
                 await CriarNotificacaoParaUtilizadorAsync(
                     visita.id_utilizador,
                     "visita_agendada",
                     "Visita agendada",
-                    "O vendedor aceitou o teu pedido e agendou a visita.",
+                    $"O vendedor {vendedorUsername} aceitou o teu pedido e agendou a visita ao {anuncioTxt}.",
                     payload
                 );
 
@@ -533,11 +571,18 @@ WHERE estado = N'agendada'
             data_visita = visita.data_visita
         };
 
+        // ✅ Obter username do vendedor
+        var vendedorUsername = await GetUsernameByMarketUserIdAsync(visita.id_anuncioNavigation.id_vendedor);
+        var anuncioTxt = AnuncioComTitulo(visita.id_anuncioNavigation.titulo);
+
+        // ✅ URL para minhas operações
+        var actionUrl = Url.Action("MinhasOperacoes", "Anuncios") ?? "/Anuncios/MinhasOperacoes";
+
         await CriarNotificacaoParaUtilizadorAsync(
             visita.id_utilizador,
             "visita_rejeitada",
             "Visita rejeitada",
-            "O vendedor rejeitou o teu pedido de visita.",
+            $"O vendedor {vendedorUsername} rejeitou o teu pedido de visita ao {anuncioTxt}.",
             payload
         );
 
@@ -586,16 +631,48 @@ WHERE estado = N'agendada'
             data_visita = visita.data_visita
         };
 
-        await CriarNotificacaoParaAmbosAsync(
-            idComprador: visita.id_utilizador,
-            idVendedor: visita.id_anuncioNavigation.id_vendedor,
+        // ✅ Obter username do vendedor
+        var vendedorUsername = await GetUsernameByMarketUserIdAsync(visita.id_anuncioNavigation.id_vendedor);
+        var anuncioTxt = AnuncioComTitulo(visita.id_anuncioNavigation.titulo);
+
+        // ✅ URLs diferentes para comprador/vendedor
+        var actionUrlComprador = Url.Action("MinhasOperacoes", "Anuncios") ?? "/Anuncios/MinhasOperacoes";
+        var actionUrlVendedor = Url.Action("GestaoVendedor", "Visitas") ?? "/Visitas/GestaoVendedor";
+
+        var payloadComprador = new
+        {
+            v = 1,
+            id_visita = visita.id_visita,
+            id_anuncio = visita.id_anuncio,
+            data_visita = visita.data_visita,
+        };
+
+        var payloadVendedor = new
+        {
+            v = 1,
+            id_visita = visita.id_visita,
+            id_anuncio = visita.id_anuncio,
+            data_visita = visita.data_visita,
+        };
+
+        await CriarNotificacaoParaUtilizadorAsync(
+            idDestinatario: visita.id_utilizador,
             tipo: "visita_cancelada",
-            tituloComprador: "Visita cancelada",
-            textoComprador: "A visita foi cancelada pelo vendedor.",
-            tituloVendedor: "Visita cancelada",
-            textoVendedor: "Cancelaste a visita.",
-            payload: payload
+            titulo: "Visita cancelada",
+            texto: $"A visita ao {anuncioTxt} foi cancelada pelo vendedor {vendedorUsername}.",
+            payload: payloadComprador
         );
+
+        if (visita.id_anuncioNavigation.id_vendedor != visita.id_utilizador)
+        {
+            await CriarNotificacaoParaUtilizadorAsync(
+                idDestinatario: visita.id_anuncioNavigation.id_vendedor,
+                tipo: "visita_cancelada",
+                titulo: "Visita cancelada",
+                texto: $"Cancelaste a visita ao {anuncioTxt}.",
+                payload: payloadVendedor
+            );
+        }
 
         await _marketDb.SaveChangesAsync();
 
@@ -682,6 +759,9 @@ WHERE estado = N'agendada'
             await _marketDb.SaveChangesAsync();
 
             // ✅ NOTIFICAÇÃO 3: Ambos recebem "Visita cancelada"
+            var compradorUsername = await GetUsernameByMarketUserIdAsync(idUtil.Value);
+            var anuncioTxt = AnuncioComTitulo(visita.id_anuncioNavigation.titulo);
+
             var payload = new
             {
                 v = 1,
@@ -690,16 +770,24 @@ WHERE estado = N'agendada'
                 data_visita = visita.data_visita
             };
 
-            await CriarNotificacaoParaAmbosAsync(
-                idComprador: visita.id_utilizador,
-                idVendedor: visita.id_anuncioNavigation.id_vendedor,
+            await CriarNotificacaoParaUtilizadorAsync(
+                idDestinatario: visita.id_utilizador,
                 tipo: "visita_cancelada",
-                tituloComprador: "Visita cancelada",
-                textoComprador: "Cancelaste a visita.",
-                tituloVendedor: "Visita cancelada",
-                textoVendedor: "A visita foi cancelada pelo comprador.",
+                titulo: "Visita cancelada",
+                texto: $"Cancelaste a visita ao {anuncioTxt}.",
                 payload: payload
             );
+
+            if (visita.id_anuncioNavigation.id_vendedor != visita.id_utilizador)
+            {
+                await CriarNotificacaoParaUtilizadorAsync(
+                    idDestinatario: visita.id_anuncioNavigation.id_vendedor,
+                    tipo: "visita_cancelada",
+                    titulo: "Visita cancelada",
+                    texto: $"A visita ao {anuncioTxt} foi cancelada pelo comprador {compradorUsername}.",
+                    payload: payload
+                );
+            }
 
             await _marketDb.SaveChangesAsync();
         }
@@ -741,6 +829,9 @@ WHERE estado = N'agendada'
             await _marketDb.SaveChangesAsync();
 
             // Notificação aos dois (igual ao CancelarComprador)
+            var compradorUsername = await GetUsernameByMarketUserIdAsync(idUtil.Value);
+            var anuncioTxt = AnuncioComTitulo(visita.id_anuncioNavigation.titulo);
+
             var payload = new
             {
                 v = 1,
@@ -749,16 +840,24 @@ WHERE estado = N'agendada'
                 data_visita = visita.data_visita
             };
 
-            await CriarNotificacaoParaAmbosAsync(
-                idComprador: visita.id_utilizador,
-                idVendedor: visita.id_anuncioNavigation.id_vendedor,
+            await CriarNotificacaoParaUtilizadorAsync(
+                idDestinatario: visita.id_utilizador,
                 tipo: "visita_cancelada",
-                tituloComprador: "Visita cancelada",
-                textoComprador: "Cancelaste a visita.",
-                tituloVendedor: "Visita cancelada",
-                textoVendedor: "A visita foi cancelada pelo comprador.",
+                titulo: "Visita cancelada",
+                texto: $"Cancelaste a visita ao {anuncioTxt}.",
                 payload: payload
             );
+
+            if (visita.id_anuncioNavigation.id_vendedor != visita.id_utilizador)
+            {
+                await CriarNotificacaoParaUtilizadorAsync(
+                    idDestinatario: visita.id_anuncioNavigation.id_vendedor,
+                    tipo: "visita_cancelada",
+                    titulo: "Visita cancelada",
+                    texto: $"A visita ao {anuncioTxt} foi cancelada pelo comprador {compradorUsername}.",
+                    payload: payload
+                );
+            }
 
             await _marketDb.SaveChangesAsync();
         }
