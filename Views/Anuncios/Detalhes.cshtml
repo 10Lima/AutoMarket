@@ -38,6 +38,30 @@
     if (idUtil != null && !isOwner)
         isComprador = await MarketDb.Comprador.AnyAsync(c => c.id_utilizador == idUtil.Value);
 
+    // ✅ NOVA: Verificar se já existe visita pendente/agendada
+    long? myVisitaId = null;
+    DateTime? myVisitaLocal = null;
+    string? myVisitaEstado = null;
+
+    if (isComprador && idUtil != null)
+    {
+        var v = await MarketDb.Visita
+            .AsNoTracking()
+            .Where(x => x.id_anuncio == Model.id_anuncio
+                     && x.id_utilizador == idUtil.Value
+                     && (x.estado == "pendente" || x.estado == "agendada"))
+            .OrderByDescending(x => x.data_visita)
+            .Select(x => new { x.id_visita, x.data_visita, x.estado })
+            .FirstOrDefaultAsync();
+
+        if (v != null)
+        {
+            myVisitaId = v.id_visita;
+            myVisitaLocal = v.data_visita.ToLocalTime();
+            myVisitaEstado = v.estado;
+        }
+    }
+
     bool showActions = !isOwner;
 
     bool hasMyActiveReserva = false;
@@ -107,6 +131,36 @@
 
     var c1 = contactosVendedor.ElementAtOrDefault(0);
     var c2 = contactosVendedor.ElementAtOrDefault(1);
+
+    // ✅ NOVO: Verificar encomendas pendente/paga
+    bool hasMyEncomendaPendente = false;
+    long? myEncomendaPendenteId = null;
+    bool hasMyEncomendaPaga = false;
+
+    if (isComprador && idUtil != null)
+    {
+        var enc = await MarketDb.Encomenda
+            .AsNoTracking()
+            .Where(e => e.id_anuncio == Model.id_anuncio
+                     && e.id_utilizador == idUtil.Value
+                     && (e.estado == "pendente" || e.estado == "pago"))
+            .OrderByDescending(e => e.data_encomenda)
+            .Select(e => new { e.id_encomenda, e.estado })
+            .FirstOrDefaultAsync();
+
+        if (enc != null)
+        {
+            if (enc.estado == "pendente")
+            {
+                hasMyEncomendaPendente = true;
+                myEncomendaPendenteId = enc.id_encomenda;
+            }
+            else if (enc.estado == "pago")
+            {
+                hasMyEncomendaPaga = true;
+            }
+        }
+    }
 }
 
 <div class="container-xl ad-details">
@@ -394,9 +448,6 @@
                 {
                     <div class="card">
                         <div class="card-body">
-
-                            <div id="visitaContainer"></div>
-
                             @if (!isAuth)
                             {
                                 var returnUrl = Url.Action("Detalhes", "Anuncios", new { id = Model.id_anuncio });
@@ -435,27 +486,94 @@
                                             </button>
                                         </form>
 
-                                        <!-- ✅ Slot SEM template (HTML guardado via JS) -->
+                                        <!-- ✅ Slot DINÂMICO (mostra visita existente ou botão Agendar) -->
                                         <div id="agendarSlot_@Model.id_anuncio" class="agendar-slot">
-                                            <form asp-controller="Visitas" asp-action="FormAgendar" method="get"
-                                                  data-ajax="true"
-                                                  data-ajax-method="GET"
-                                                  data-ajax-update="#agendarSlot_@Model.id_anuncio"
-                                                  data-ajax-mode="replace">
-                                                <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
-                                                <button class="btn-am btn-am-ghost w-100" type="submit">
-                                                    <i class="bi bi-calendar-check"></i> Agendar Visita
-                                                </button>
-                                            </form>
+                                            @if (myVisitaId != null && myVisitaLocal.HasValue && (myVisitaEstado == "pendente" || myVisitaEstado == "agendada"))
+                                            {
+                                                var isAgendada = myVisitaEstado == "agendada";
+                                                var titulo = isAgendada ? "Pedido aceite" : "Pedido submetido";
+                                                var estadoUi = isAgendada ? "Agendada" : "pendente";
+                                                var labelData = isAgendada ? "Data visita" : "Data proposta";
+                                                var dataTxt = myVisitaLocal.Value.ToString("dd/MM/yyyy HH:mm");
+
+                                                <div class="alert alert-success border mb-0">
+                                                    <h6 class="mb-1">
+                                                        <i class="bi bi-check-circle-fill"></i> @titulo
+                                                    </h6>
+
+                                                    <div class="small text-muted mb-3">
+                                                        Estado: <strong>@estadoUi</strong> · @labelData: <strong>@dataTxt</strong>
+                                                    </div>
+
+                                                    <form asp-controller="Visitas" asp-action="CancelarDetalhe" method="post"
+                                                          data-ajax="true"
+                                                          data-ajax-method="POST"
+                                                          data-ajax-update="#agendarSlot_@Model.id_anuncio"
+                                                          data-ajax-mode="replace"
+                                                          onsubmit="return confirm('Cancelar esta visita?');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="idVisita" value="@myVisitaId" />
+                                                        <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
+
+                                                        <button class="btn-am btn-am-outline w-100" type="submit">
+                                                            <i class="bi bi-x-circle"></i> Cancelar Visita a @dataTxt
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <form asp-controller="Visitas" asp-action="FormAgendar" method="get"
+                                                      data-ajax="true"
+                                                      data-ajax-method="GET"
+                                                      data-ajax-update="#agendarSlot_@Model.id_anuncio"
+                                                      data-ajax-mode="replace">
+                                                    <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
+                                                    <button class="btn-am btn-am-ghost w-100" type="submit">
+                                                        <i class="bi bi-calendar-check"></i> Agendar Visita
+                                                    </button>
+                                                </form>
+                                            }
                                         </div>
 
-                                        <form asp-controller="Encomendas" asp-action="Adicionar" method="post">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
-                                            <button class="btn-am btn-am-solid w-100" type="submit">
-                                                <i class="bi bi-cart-check"></i> Comprar
+                                        @* ✅ ENCOMENDA: pendente/paga/normal *@
+                                        @if (hasMyEncomendaPendente && myEncomendaPendenteId != null)
+                                        {
+                                            var returnUrl = Url.Action("Detalhes", "Anuncios", new { id = Model.id_anuncio });
+
+                                            <a class="btn-am btn-am-solid w-100"
+                                               asp-controller="Encomendas"
+                                               asp-action="Carrinho">
+                                                <i class="bi bi-cart"></i> Ir para o carrinho
+                                            </a>
+
+                                            <form asp-controller="Encomendas" asp-action="Cancelar" method="post"
+                                                  onsubmit="return confirm('Cancelar esta encomenda?');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@myEncomendaPendenteId" />
+                                                <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                                                <button class="btn btn-outline-danger btn-lg w-100" type="submit">
+                                                    <i class="bi bi-x-circle"></i> Cancelar encomenda
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (hasMyEncomendaPaga)
+                                        {
+                                            <button class="btn-am btn-am-solid w-100" type="button" disabled>
+                                                <i class="bi bi-check2-circle"></i> Já comprado
                                             </button>
-                                        </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-controller="Encomendas" asp-action="Adicionar" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
+                                                <button class="btn-am btn-am-solid w-100" type="submit">
+                                                    <i class="bi bi-cart-check"></i> Comprar
+                                                </button>
+                                            </form>
+                                        }
                                     </div>
                                 }
                                 else if (isAtivo)
@@ -469,27 +587,94 @@
                                             </button>
                                         </form>
 
-                                        <!-- ✅ Slot SEM template (HTML guardado via JS) -->
+                                        <!-- ✅ Slot DINÂMICO (mostra visita existente ou botão Agendar) -->
                                         <div id="agendarSlot_@Model.id_anuncio" class="agendar-slot">
-                                            <form asp-controller="Visitas" asp-action="FormAgendar" method="get"
-                                                  data-ajax="true"
-                                                  data-ajax-method="GET"
-                                                  data-ajax-update="#agendarSlot_@Model.id_anuncio"
-                                                  data-ajax-mode="replace">
-                                                <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
-                                                <button class="btn-am btn-am-ghost w-100" type="submit">
-                                                    <i class="bi bi-calendar-check"></i> Agendar Visita
-                                                </button>
-                                            </form>
+                                            @if (myVisitaId != null && myVisitaLocal.HasValue && (myVisitaEstado == "pendente" || myVisitaEstado == "agendada"))
+                                            {
+                                                var isAgendada = myVisitaEstado == "agendada";
+                                                var titulo = isAgendada ? "Pedido aceite" : "Pedido submetido";
+                                                var estadoUi = isAgendada ? "Agendada" : "pendente";
+                                                var labelData = isAgendada ? "Data visita" : "Data proposta";
+                                                var dataTxt = myVisitaLocal.Value.ToString("dd/MM/yyyy HH:mm");
+
+                                                <div class="alert alert-success border mb-0">
+                                                    <h6 class="mb-1">
+                                                        <i class="bi bi-check-circle-fill"></i> @titulo
+                                                    </h6>
+
+                                                    <div class="small text-muted mb-3">
+                                                        Estado: <strong>@estadoUi</strong> · @labelData: <strong>@dataTxt</strong>
+                                                    </div>
+
+                                                    <form asp-controller="Visitas" asp-action="CancelarDetalhe" method="post"
+                                                          data-ajax="true"
+                                                          data-ajax-method="POST"
+                                                          data-ajax-update="#agendarSlot_@Model.id_anuncio"
+                                                          data-ajax-mode="replace"
+                                                          onsubmit="return confirm('Cancelar esta visita?');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="idVisita" value="@myVisitaId" />
+                                                        <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
+
+                                                        <button class="btn-am btn-am-outline w-100" type="submit">
+                                                            <i class="bi bi-x-circle"></i> Cancelar Visita a @dataTxt
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <form asp-controller="Visitas" asp-action="FormAgendar" method="get"
+                                                      data-ajax="true"
+                                                      data-ajax-method="GET"
+                                                      data-ajax-update="#agendarSlot_@Model.id_anuncio"
+                                                      data-ajax-mode="replace">
+                                                    <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
+                                                    <button class="btn-am btn-am-ghost w-100" type="submit">
+                                                        <i class="bi bi-calendar-check"></i> Agendar Visita
+                                                    </button>
+                                                </form>
+                                            }
                                         </div>
 
-                                        <form asp-controller="Encomendas" asp-action="Adicionar" method="post">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
-                                            <button class="btn-am btn-am-solid w-100" type="submit">
-                                                <i class="bi bi-cart-check"></i> Comprar
+                                        @* ✅ ENCOMENDA: pendente/paga/normal *@
+                                        @if (hasMyEncomendaPendente && myEncomendaPendenteId != null)
+                                        {
+                                            var returnUrl = Url.Action("Detalhes", "Anuncios", new { id = Model.id_anuncio });
+
+                                            <a class="btn-am btn-am-solid w-100"
+                                               asp-controller="Encomendas"
+                                               asp-action="Carrinho">
+                                                <i class="bi bi-cart"></i> Ir para o carrinho
+                                            </a>
+
+                                            <form asp-controller="Encomendas" asp-action="Cancelar" method="post"
+                                                  onsubmit="return confirm('Cancelar esta encomenda?');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@myEncomendaPendenteId" />
+                                                <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                                                <button class="btn btn-outline-danger btn-lg w-100" type="submit">
+                                                    <i class="bi bi-x-circle"></i> Cancelar encomenda
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (hasMyEncomendaPaga)
+                                        {
+                                            <button class="btn-am btn-am-solid w-100" type="button" disabled>
+                                                <i class="bi bi-check2-circle"></i> Já comprado
                                             </button>
-                                        </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-controller="Encomendas" asp-action="Adicionar" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="idAnuncio" value="@Model.id_anuncio" />
+                                                <button class="btn-am btn-am-solid w-100" type="submit">
+                                                    <i class="bi bi-cart-check"></i> Comprar
+                                                </button>
+                                            </form>
+                                        }
                                     </div>
                                 }
                                 else
@@ -513,6 +698,8 @@
         </div>
     </div>
 </div>
+
+<!-- ❌ REMOVER ESTE BLOCO DUPLICADO COMPLETAMENTE -->
 
 @section Scripts {
     <script>

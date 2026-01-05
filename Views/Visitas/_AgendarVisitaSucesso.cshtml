@@ -1,24 +1,35 @@
 @{
     int idAnuncio = (int)(ViewBag.IdAnuncio ?? 0);
+    long idVisita = (long)(ViewBag.IdVisita ?? 0L);
     string dataAgendada = (string)(ViewBag.DataAgendada ?? "");
 }
 
-<div class="alert alert-success border mb-0 d-flex justify-content-between align-items-start gap-3">
-    <div>
-        <h6 class="mb-1">
-            <i class="bi bi-check-circle-fill"></i> Pedido submetido
-        </h6>
-        <p class="mb-0">
-            O teu pedido de visita @(!string.IsNullOrWhiteSpace(dataAgendada) ? $"para {dataAgendada}" : "") 
-            foi submetido com estado <strong>pendente</strong>.<br />
-            O vendedor irá aceitar ou rejeitar em breve.
-        </p>
+<div class="alert alert-success border mb-0">
+    <h6 class="mb-1">
+        <i class="bi bi-check-circle-fill"></i> Pedido submetido
+    </h6>
+
+    <div class="small text-muted mb-3">
+        Estado: <strong>pendente</strong>
+        @if (!string.IsNullOrWhiteSpace(dataAgendada))
+        {
+            <span> · Data proposta: <strong>@dataAgendada</strong></span>
+        }
     </div>
 
-    <button type="button"
-            class="am-close"
-            onclick="amCloseAgendar(@idAnuncio)"
-            aria-label="Fechar">
-        &times;
-    </button>
+    <form asp-controller="Visitas" asp-action="CancelarDetalhe" method="post"
+          data-ajax="true"
+          data-ajax-method="POST"
+          data-ajax-update="#agendarSlot_@idAnuncio"
+          data-ajax-mode="replace"
+          onsubmit="return confirm('Cancelar esta visita?');">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="idVisita" value="@idVisita" />
+        <input type="hidden" name="idAnuncio" value="@idAnuncio" />
+
+        <button class="btn-am btn-am-outline w-100" type="submit">
+            <i class="bi bi-x-circle"></i>
+            Cancelar Visita a @dataAgendada
+        </button>
+    </form>
 </div>

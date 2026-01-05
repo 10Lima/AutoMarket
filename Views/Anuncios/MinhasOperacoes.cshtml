@@ -1,330 +1,93 @@
-@model List<AutoMarket.Models.Market.Reserva>
+ï»¿@model List<AutoMarket.Models.Market.Reserva>
 
 @{
-    ViewData["Title"] = "Minhas Operações";
-    var visitas = ViewBag.Visitas as IEnumerable<AutoMarket.Models.Market.Visita> ?? Enumerable.Empty<AutoMarket.Models.Market.Visita>();
-    var encomendas = ViewBag.Encomendas as List<AutoMarket.Models.Market.Encomenda> ?? new List<AutoMarket.Models.Market.Encomenda>();
+    ViewData["Title"] = "Minhas OperaÃ§Ãµes";
 
-    // Helpers para encomendas
-    var estados = new[] { "pendente", "pago", "cancelado" };
+    var tipo = (ViewBag.Tipo as string) ?? "todos";
 
-    string Badge(string estado) => estado.ToLowerInvariant() switch
-    {
-        "pendente" => "bg-warning text-dark",
-        "pago" => "bg-success",
-        "cancelado" => "bg-secondary",
-        _ => "bg-secondary"
-    };
-
-    string Label(string estado) => estado.ToLowerInvariant() switch
-    {
-        "pendente" => "Pendente",
-        "pago" => "Pago",
-        "cancelado" => "Cancelado",
-        _ => estado
-    };
-
-    string? PrimeiraImagem(AutoMarket.Models.Market.Encomenda e)
-    {
-        return e.id_anuncioNavigation?.Anuncio_Imagem?
-            .OrderByDescending(x => x.principal)
-            .ThenBy(x => x.ordem ?? 9999)
-            .FirstOrDefault()
-            ?.id_imagem_anuncioNavigation?.url;
-    }
+    int cReservas = ViewBag.CountReservas ?? 0;
+    int cVisitas = ViewBag.CountVisitas ?? 0;
+    int cEncomendas = ViewBag.CountEncomendas ?? 0;
+    int cTodos = ViewBag.CountTodos ?? (cReservas + cVisitas + cEncomendas);
 }
+
+<style>
+    .ops-tabs {
+        display: flex;
+        gap: 26px;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 14px;
+        padding-bottom: 6px;
+    }
+
+        .ops-tabs a {
+            padding: 12px 4px;
+            text-decoration: none;
+            color: #6b7280;
+            font-weight: 650;
+            border-bottom: 3px solid transparent;
+        }
+
+            .ops-tabs a.active {
+                color: #111827;
+                border-bottom-color: #111827;
+            }
+</style>
 
 <div class="container mt-3">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">Minhas Reservas, Visitas e Encomendas</h3>
-        <a class="btn btn-outline-secondary" asp-action="Carros" asp-controller="Anuncios">Voltar aos carros</a>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h3 class="mb-0">Minhas OperaÃ§Ãµes</h3>
+        <a class="btn btn-dark" asp-action="Carros" asp-controller="Anuncios">Voltar aos carros</a>
     </div>
 
-    @if (TempData["Msg"] != null)
+    @* Se quiseres, troca para uma key exclusiva sÃ³ desta pÃ¡gina, ex.: TempData["MsgOps"] *@
+    @if (TempData["MsgOps"] != null)
     {
-        <div class="alert alert-info alert-dismissible fade show">
-            @TempData["Msg"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="alert alert-info d-flex justify-content-between align-items-center mb-3" role="alert">
+            <span>@TempData["MsgOps"]</span>
+            <button type="button" class="btn-close" aria-label="Fechar"
+                    onclick="this.closest('.alert')?.remove();"></button>
         </div>
     }
 
-    <!-- ========================================
-         RESERVAS ATIVAS
-         ======================================== -->
-    <div class="card mb-3">
-        <div class="card-header bg-light">
-            <strong>Reservas ativas</strong>
-        </div>
-        <div class="card-body">
+    <!-- TABS (AJAX) -->
+    <div class="ops-tabs" id="opsTabs">
+        <a class="@(tipo == "reservas" ? "active" : "")"
+           href="@Url.Action("_MinhasOperacoesConteudo", "Anuncios", new { tipo = "reservas" })"
+           data-ajax="true" data-ajax-method="GET" data-ajax-mode="replace" data-ajax-update="#opsContainer"
+           data-ajax-success="amOpsInit">
+            Reservas (@cReservas)
+        </a>
 
-            @if (!Model.Any())
-            {
-                <div class="text-muted">Ainda não tens reservas ativas.</div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <thead>
-                            <tr>
-                                <th>Anúncio</th>
-                                <th>Reservado em</th>
-                                <th>Expira</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var r in Model)
-                            {
-                                var a = r.id_anuncioNavigation;
-                                var img = a?.Anuncio_Imagem?
-                                .OrderByDescending(x => x.principal)
-                                .ThenBy(x => x.ordem ?? 9999)
-                                .FirstOrDefault()
-                                ?.id_imagem_anuncioNavigation?.url;
+        <a class="@(tipo == "visitas" ? "active" : "")"
+           href="@Url.Action("_MinhasOperacoesConteudo", "Anuncios", new { tipo = "visitas" })"
+           data-ajax="true" data-ajax-method="GET" data-ajax-mode="replace" data-ajax-update="#opsContainer"
+           data-ajax-success="amOpsInit">
+            Visitas (@cVisitas)
+        </a>
 
-                                <tr>
-                                    <td style="min-width:320px;">
-                                        <div class="d-flex gap-2">
-                                            <div style="width:96px;">
-                                                @if (!string.IsNullOrWhiteSpace(img))
-                                                {
-                                                    <img src="@img" class="img-fluid rounded" alt="Imagem anúncio" />
-                                                }
-                                                else
-                                                {
-                                                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height:64px;">
-                                                        <i class="bi bi-image text-muted"></i>
-                                                    </div>
-                                                }
-                                            </div>
-                                            <div>
-                                                <div class="fw-semibold">
-                                                    <a asp-action="Detalhes" asp-controller="Anuncios" asp-route-id="@a.id_anuncio">
-                                                        @(a.titulo ?? "Sem título")
-                                                    </a>
-                                                </div>
-                                                <div class="text-muted small">
-                                                    Preço: @(a.preco.HasValue? a.preco.Value.ToString("N2") + " €" : "—")
-                                                    • Estado do anúncio: @a.estado
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
+        <a class="@(tipo == "encomendas" ? "active" : "")"
+           href="@Url.Action("_MinhasOperacoesConteudo", "Anuncios", new { tipo = "encomendas" })"
+           data-ajax="true" data-ajax-method="GET" data-ajax-mode="replace" data-ajax-update="#opsContainer"
+           data-ajax-success="amOpsInit">
+            Encomendas (@cEncomendas)
+        </a>
 
-                                    <td>@r.data_reserva.ToString("dd/MM/yyyy HH:mm")</td>
-
-                                    <td>
-                                        @(r.data_expiracao.HasValue? r.data_expiracao.Value.ToString("dd/MM/yyyy HH:mm") : "—")
-                                    </td>
-
-                                    <td class="text-end">
-                                        <form asp-action="CancelarReserva" asp-controller="Anuncios" method="post"
-                                              onsubmit="return confirm('Tens a certeza que queres cancelar a reserva?');">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="idReserva" value="@r.id_reserva" />
-                                            <button type="submit" class="btn btn-outline-danger btn-sm">
-                                                Cancelar
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </div>
+        <a class="@(tipo == "todos" ? "active" : "")"
+           href="@Url.Action("_MinhasOperacoesConteudo", "Anuncios", new { tipo = "todos" })"
+           data-ajax="true" data-ajax-method="GET" data-ajax-mode="replace" data-ajax-update="#opsContainer"
+           data-ajax-success="amOpsInit">
+            Todos (@cTodos)
+        </a>
     </div>
 
-    <!-- ========================================
-         VISITAS (AJAX + Partial)
-         ======================================== -->
-    <div class="card mb-3">
-        <div class="card-header bg-light">
-            <strong>Visitas</strong>
-        </div>
-        <div class="card-body">
-
-            <form id="filtrosMinhasVisitas"
-                  asp-controller="Visitas"
-                  asp-action="ListaMinhasVisitas"
-                  method="get"
-                  data-ajax="true"
-                  data-ajax-method="GET"
-                  data-ajax-update="#minhasVisitasLista"
-                  data-ajax-mode="replace"
-                  class="row g-2">
-
-                <div class="col-12 col-md-4">
-                    <label class="form-label mb-1">Estado</label>
-                    <select class="form-select" name="estado" id="minhasVisitasEstado">
-                        <option value="todos">todos</option>
-                        <option value="pendente">pendente</option>
-                        <option value="agendada">agendada</option>
-                        <option value="rejeitada">rejeitada</option>
-                        <option value="cancelada">cancelada</option>
-                        <option value="realizada">realizada</option>
-                    </select>
-                </div>
-
-                <div class="col-12 col-md-5">
-                    <label class="form-label mb-1">Ordenação</label>
-                    <select class="form-select" name="ordem" id="minhasVisitasOrdem">
-                        <option value="id_desc">Mais recente</option>
-                        <option value="id_asc">Mais antiga</option>
-                        <option value="data_proxima">Data agendada mais perto</option>
-                        <option value="data_longe">Data agendada mais longe</option>
-                    </select>
-                </div>
-
-            </form>
-
-            <div class="mt-3" id="minhasVisitasLista">
-                <div class="alert alert-secondary mb-0">A carregar visitas…</div>
+    <!-- CONTEÃšDO (Partial) -->
+    <div id="opsContainer">
+        <div class="text-center text-muted py-4">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">A carregar...</span>
             </div>
-
-        </div>
-    </div>
-
-    <!-- ========================================
-         ENCOMENDAS (agrupadas por estado)
-         ======================================== -->
-    <div class="card">
-        <div class="card-header bg-light">
-            <strong>Encomendas</strong>
-        </div>
-        <div class="card-body">
-
-            @if (TempData["InfoCarrinho"] != null)
-            {
-                <div class="alert alert-info alert-dismissible fade show">
-                    <i class="bi bi-info-circle"></i> @TempData["InfoCarrinho"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            }
-
-            @if (!encomendas.Any())
-            {
-                <div class="alert alert-info mb-0">
-                    <i class="bi bi-info-circle"></i> Ainda não tens encomendas.
-                </div>
-            }
-            else
-            {
-                @foreach (var est in estados)
-                {
-                    var lista = encomendas
-                    .Where(e => string.Equals(e.estado, est, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(e => e.data_encomenda)
-                    .ToList();
-
-                    bool isPendente = string.Equals(est, "pendente", StringComparison.OrdinalIgnoreCase);
-
-                    <div class="border rounded mb-3">
-                        <div class="bg-light px-3 py-2 d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge @Badge(est)">@Label(est)</span>
-                                <strong>@Label(est)</strong>
-                            </div>
-                            <span class="text-muted">@lista.Count</span>
-                        </div>
-
-                        @if (!lista.Any())
-                        {
-                            <div class="p-3 text-muted">Sem encomendas neste estado.</div>
-                        }
-                        else
-                        {
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width:90px;"></th>
-                                        <th>Detalhe</th>
-                                        <th style="width:170px;">Data</th>
-                                        <th style="width:180px;">Referência</th>
-                                        @if (isPendente)
-                                        {
-                                            <th style="width:200px;" class="text-end">Ações</th>
-                                        }
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var e in lista)
-                                    {
-                                        var img = PrimeiraImagem(e);
-                                        var titulo = e.id_anuncioNavigation?.titulo ?? $"Anúncio #{e.id_anuncio}";
-
-                                        <tr>
-                                            <td>
-                                                @if (!string.IsNullOrWhiteSpace(img))
-                                                {
-                                                    <img src="@img" alt="Imagem" class="rounded"
-                                                         style="width:80px;height:60px;object-fit:cover;" />
-                                                }
-                                                else
-                                                {
-                                                    <div class="bg-light d-flex align-items-center justify-content-center rounded"
-                                                         style="width:80px;height:60px;">
-                                                        <i class="bi bi-image text-muted"></i>
-                                                    </div>
-                                                }
-                                            </td>
-
-                                            <td>
-                                                <div class="fw-semibold">
-                                                    <a asp-controller="Anuncios" asp-action="Detalhes" asp-route-id="@e.id_anuncio">
-                                                        @titulo
-                                                    </a>
-                                                </div>
-                                                <div class="text-muted small">Encomenda #@e.id_encomenda</div>
-                                            </td>
-
-                                            <td>@e.data_encomenda.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-
-                                            <td>
-                                                @if (!string.IsNullOrWhiteSpace(e.ref_pagamento))
-                                                {
-                                                    <code class="small">@e.ref_pagamento</code>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted small">—</span>
-                                                }
-                                            </td>
-
-                                            @if (isPendente)
-                                            {
-                                                <td class="text-end">
-                                                    <a class="btn btn-success btn-sm"
-                                                       asp-controller="Encomendas"
-                                                       asp-action="Checkout"
-                                                       asp-route-id="@e.id_encomenda">
-                                                        <i class="bi bi-credit-card"></i> Checkout
-                                                    </a>
-
-                                                    <form asp-controller="Encomendas" asp-action="Cancelar" method="post"
-                                                          class="d-inline"
-                                                          onsubmit="return confirm('Queres mesmo cancelar esta encomenda?');">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="id" value="@e.id_encomenda" />
-                                                        <input type="hidden" name="returnTo" value="MinhasOperacoes" />
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm">
-                                                            <i class="bi bi-x-circle"></i> Cancelar
-                                                        </button>
-                                                    </form>
-                                                </td>
-                                            }
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        }
-                    </div>
-                }
-            }
-
         </div>
     </div>
 
@@ -332,20 +95,72 @@
 
 @section Scripts {
     <script>
-        (function () {
-            const f = document.getElementById("filtrosMinhasVisitas");
-            const e = document.getElementById("minhasVisitasEstado");
-            const o = document.getElementById("minhasVisitasOrdem");
+        // âœ… Carrega conteÃºdo via AJAX ao abrir a pÃ¡gina
+        $(function () {
+            const tipo = "@(ViewBag.Tipo ?? "todos")";
+            const url = "@Url.Action("_MinhasOperacoesConteudo", "Anuncios")";
 
-            function submit() {
-                if (!f) return;
-                f.requestSubmit();
+            $("#opsContainer").load(url + "?tipo=" + encodeURIComponent(tipo), function(response, status, xhr) {
+                if (status === "error") {
+                    $(this).html('<div class="alert alert-danger">Erro ao carregar dados.</div>');
+                } else if (window.amOpsInit) {
+                    window.amOpsInit();
+                }
+            });
+        });
+
+        // ativa o tab visualmente ao clicar (sem depender do servidor)
+        $(document).on('click', '#opsTabs a', function () {
+            $('#opsTabs a').removeClass('active');
+            $(this).addClass('active');
+        });
+
+        // âœ… (re)inicializa TODAS as secÃ§Ãµes (visitas/reservas/encomendas) quando o partial Ã© carregado
+        window.amOpsInit = function () {
+
+            // ===== VISITAS =====
+            const fv = document.getElementById("filtrosMinhasVisitas");
+            if (fv && fv.dataset.bound !== "1") {
+                fv.dataset.bound = "1";
+                const ev = document.getElementById("minhasVisitasEstado");
+                const ov = document.getElementById("minhasVisitasOrdem");
+
+                // âœ… Garantir valor padrÃ£o "recent" se nÃ£o estiver definido
+                if (ov && !ov.value) ov.value = "recent";
+    
+
+                const submitV = () => { try { fv.requestSubmit(); } catch {} };
+                if (ev) ev.addEventListener("change", submitV);
+                if (ov) ov.addEventListener("change", submitV);
             }
+            if (fv) { try { fv.requestSubmit(); } catch {} }
 
-            if (e) e.addEventListener("change", submit);
-            if (o) o.addEventListener("change", submit);
+            // ===== RESERVAS =====
+            const fr = document.getElementById("filtrosMinhasReservas");
+            if (fr && fr.dataset.bound !== "1") {
+                fr.dataset.bound = "1";
+                const er = document.getElementById("minhasReservasEstado");
+                const or = document.getElementById("minhasReservasOrdem");
+                const submitR = () => { try { fr.requestSubmit(); } catch {} };
+                if (er) er.addEventListener("change", submitR);
+                if (or) or.addEventListener("change", submitR);
+            }
+            if (fr) { try { fr.requestSubmit(); } catch {} }
 
-            document.addEventListener("DOMContentLoaded", submit);
-        })();
+            // ===== ENCOMENDAS =====
+            const fe = document.getElementById("filtrosMinhasEncomendas");
+            if (fe && fe.dataset.bound !== "1") {
+                fe.dataset.bound = "1";
+                const ee = document.getElementById("minhasEncomendasEstado");
+                const oe = document.getElementById("minhasEncomendasOrdem");
+                const submitE = () => { try { fe.requestSubmit(); } catch {} };
+                if (ee) ee.addEventListener("change", submitE);
+                if (oe) oe.addEventListener("change", submitE);
+            }
+            if (fe) { try { fe.requestSubmit(); } catch {} }
+        };
+
+        // init ao abrir a pÃ¡gina (para "todos" ou se o partial inicial tiver visitas)
+        $(function () { window.amOpsInit(); });
     </script>
 }

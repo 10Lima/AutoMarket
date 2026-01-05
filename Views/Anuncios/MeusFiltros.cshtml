@@ -1,97 +1,208 @@
-@model List<AutoMarket.Models.Market.Comprador_Filtro>
+﻿@model List<AutoMarket.Models.Market.Comprador_Filtro>
 @using System.Text.Json
 
 @{
     ViewData["Title"] = "Meus Filtros";
+
+    var marcaById = ViewBag.MarcaById as Dictionary<int, string> ?? new();
+    var modeloById = ViewBag.ModeloById as Dictionary<int, string> ?? new();
+    var subById = ViewBag.SubModeloById as Dictionary<int, string> ?? new();
+
+    string? Lookup(Dictionary<int, string> dict, int? id)
+        => (id.HasValue && dict.TryGetValue(id.Value, out var name)) ? name : null;
+
+    string TitleCase(string? s)
+    {
+        s = (s ?? "").Trim();
+        if (s.Length == 0) return "";
+        return char.ToUpper(s[0]) + s.Substring(1);
+    }
+
+    string SortLabel(string? sort)
+    {
+        sort = (sort ?? "recent").Trim().ToLowerInvariant();
+        return sort switch
+        {
+            "recent" => "Mais recentes",
+            "destaque" => "Destaque",
+            "price_asc" => "Preço (mais barato)",
+            "price_desc" => "Preço (mais caro)",
+            "km_asc" => "Quilómetros (menos)",
+            "km_desc" => "Quilómetros (mais)",
+            "hp_asc" => "Potência (menos)",
+            "hp_desc" => "Potência (mais)",
+            _ => sort
+        };
+    }
+
+    string EstadoLabel(string? estado)
+    {
+        estado = (estado ?? "todos").Trim().ToLowerInvariant();
+        return estado switch
+        {
+            "todos" => "Todos",
+            "ativo" => "Ativo",
+            "reservado" => "Reservado",
+            _ => TitleCase(estado)
+        };
+    }
+
+    // ✅ NOVO: Ordenar por data (mais recentes primeiro) + contador
+    var ordered = Model.OrderByDescending(x => x.data_filtros).ToList();
+    int filtroNum = 1;
 }
 
-<div class="container mt-3">
-
+<div class="container-xl mt-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="mb-0">Meus Filtros</h3>
-        <a class="btn btn-outline-secondary" asp-action="Carros" asp-controller="Anuncios">
-            Voltar aos carros
+
+        <a class="btn-am btn-am-outline"
+           asp-action="Carros" asp-controller="Anuncios">
+            <i class="bi bi-arrow-left"></i> Voltar aos carros
         </a>
     </div>
 
-    @if (TempData["Msg"] != null)
+    @* ✅ NOVO: Aviso azul com "X" para fechar *@
+    @if (TempData["MsgFiltros"] != null)
     {
-        <div class="alert alert-info">@TempData["Msg"]</div>
+        <div class="alert alert-info d-flex justify-content-between align-items-center mb-3" role="alert">
+            <span>@TempData["MsgFiltros"]</span>
+
+            <button type="button"
+                    class="btn-close"
+                    aria-label="Fechar"
+                    onclick="this.closest('.alert')?.remove();">
+            </button>
+        </div>
     }
 
     @if (!Model.Any())
     {
-        <div class="alert alert-light border">Ainda n�o tens filtros guardados.</div>
+        <div class="alert alert-light border mb-0">Ainda não tens filtros guardados.</div>
         return;
     }
 
-    <div class="row g-3">
-        @foreach (var cf in Model)
+    <!-- ✅ 1 coluna: n linhas -->
+    <div class="d-grid gap-3">
+        @foreach (var cf in ordered)
         {
+            var nomeFiltro = $"Filtro #{filtroNum}";
+            filtroNum++;
+
             var json = cf.id_filtroNavigation?.parametros ?? "{}";
 
-            string resumo = "Filtros guardados";
+            // Campos já "traduzidos" para o utilizador
+            var chips = new List<(string label, string value)>();
+
             try
             {
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
 
-                string GetStr(string k) => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() ?? "" : "";
-                int? GetInt(string k) => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.Number ? p.GetInt32() : null;
+                string GetStr(string k)
+                => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.String ? (p.GetString() ?? "") : "";
+
+                int? GetInt(string k)
+                => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.Number ? p.GetInt32() : null;
+
+                decimal? GetDec(string k)
+                => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDecimal() : null;
+
+                short? GetShort(string k)
+                => root.TryGetProperty(k, out var p) && p.ValueKind == JsonValueKind.Number ? p.GetInt16() : null;
 
                 var q = GetStr("q");
+                var estado = GetStr("estado");
                 var categoria = GetStr("categoria");
                 var combustivel = GetStr("combustivel");
                 var caixa = GetStr("caixa");
+                var sort = GetStr("sort");
+
                 var idMarca = GetInt("idMarca");
+                var idModelo = GetInt("idModelo");
+                var idSub = GetInt("idSubModelo");
 
-                var parts = new List<string>();
-                if (!string.IsNullOrWhiteSpace(q)) parts.Add($"T�tulo: {q}");
-                if (!string.IsNullOrWhiteSpace(categoria)) parts.Add($"Categoria: {categoria}");
-                if (!string.IsNullOrWhiteSpace(combustivel)) parts.Add($"Combust�vel: {combustivel}");
-                if (!string.IsNullOrWhiteSpace(caixa)) parts.Add($"Caixa: {caixa}");
-                if (idMarca.HasValue) parts.Add($"Marca ID: {idMarca.Value}");
+                var anoDe = GetShort("anoDe");
+                var anoAte = GetShort("anoAte");
 
-                if (parts.Count > 0) resumo = string.Join(" � ", parts);
+                var kmDe = GetInt("kmDe");
+                var kmAte = GetInt("kmAte");
+
+                var precoDe = GetDec("precoDe");
+                var precoAte = GetDec("precoAte");
+
+                if (!string.IsNullOrWhiteSpace(q)) chips.Add(("Pesquisa", q));
+                if (!string.IsNullOrWhiteSpace(estado)) chips.Add(("Estado", EstadoLabel(estado)));
+                if (!string.IsNullOrWhiteSpace(sort)) chips.Add(("Ordenação", SortLabel(sort)));
+
+                var marcaNome = Lookup(marcaById, idMarca);
+                var modeloNome = Lookup(modeloById, idModelo);
+                var subNome = Lookup(subById, idSub);
+
+                if (!string.IsNullOrWhiteSpace(marcaNome)) chips.Add(("Marca", marcaNome!));
+                if (!string.IsNullOrWhiteSpace(modeloNome)) chips.Add(("Modelo", modeloNome!));
+                if (!string.IsNullOrWhiteSpace(subNome)) chips.Add(("Sub-modelo", subNome!));
+
+                if (!string.IsNullOrWhiteSpace(categoria)) chips.Add(("Categoria", TitleCase(categoria)));
+                if (!string.IsNullOrWhiteSpace(combustivel)) chips.Add(("Combustível", TitleCase(combustivel)));
+                if (!string.IsNullOrWhiteSpace(caixa)) chips.Add(("Caixa", TitleCase(caixa)));
+
+                if (anoDe.HasValue || anoAte.HasValue)
+                    chips.Add(("Ano", $"{(anoDe?.ToString() ?? "—")} – {(anoAte?.ToString() ?? "—")}"));
+
+                if (kmDe.HasValue || kmAte.HasValue)
+                    chips.Add(("Quilómetros", $"{(kmDe?.ToString("N0") ?? "—")} – {(kmAte?.ToString("N0") ?? "—")} km"));
+
+                if (precoDe.HasValue || precoAte.HasValue)
+                    chips.Add(("Preço", $"{(precoDe?.ToString("N0") ?? "—")} – {(precoAte?.ToString("N0") ?? "—")} €"));
             }
-            catch { /* ignora */ }
+            catch
+            {
+                chips.Add(("Info", "Filtro guardado"));
+            }
 
-            <div class="col-12 col-lg-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="fw-semibold">@resumo</div>
-                                <div class="text-muted small">
-                                    Guardado em: @cf.data_filtros.ToString("dd/MM/yyyy HH:mm")
-                                </div>
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="fw-semibold mb-1">
+                                @nomeFiltro
+                            </div>
+                            <div class="text-muted small">
+                                Guardado em: @cf.data_filtros.ToString("dd/MM/yyyy HH:mm")
                             </div>
                         </div>
 
-                        <details class="mt-2">
-                            <summary class="text-muted small">Ver JSON</summary>
-                            <pre class="mt-2 mb-0 small bg-light p-2 rounded" style="white-space: pre-wrap;">@json</pre>
-                        </details>
-
-                        <div class="d-flex gap-2 mt-3">
-                            <a class="btn btn-outline-primary"
+                        <div class="d-flex gap-2">
+                            <a class="btn-am btn-am-solid"
                                asp-action="AplicarFiltro"
                                asp-controller="Anuncios"
                                asp-route-idFiltro="@cf.id_filtro">
                                 Aplicar
                             </a>
 
-
-                            <form asp-action="EliminarFiltro" asp-controller="Anuncios" method="post" class="ms-auto">
+                            <form asp-action="EliminarFiltro" asp-controller="Anuncios" method="post"
+                                  onsubmit="return confirm('Eliminar este filtro?');">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="idFiltro" value="@cf.id_filtro" />
-                                <button type="submit" class="btn btn-outline-danger">
-                                    Eliminar
+                                <button type="submit" class="btn-am btn-am-outline">
+                                    <i class="bi bi-trash"></i> Eliminar
                                 </button>
                             </form>
                         </div>
-
                     </div>
+
+                    @if (chips.Any())
+                    {
+                        <div class="mt-3 d-flex flex-wrap gap-2">
+                            @foreach (var c in chips)
+                            {
+                                <span class="badge rounded-pill text-bg-light border text-dark px-3 py-2">
+                                    <span class="text-muted">@c.label:</span> <strong>@c.value</strong>
+                                </span>
+                            }
+                        </div>
+                    }
                 </div>
             </div>
         }

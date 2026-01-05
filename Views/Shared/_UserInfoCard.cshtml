@@ -1,0 +1,50 @@
+﻿@using AutoMarket.Models.Market
+@model Utilizador
+
+@{
+    var username = (string?)ViewData["Username"];
+    var email = (string?)ViewData["Email"];
+
+    var contactos = (Model.Utilizador_Contacto ?? new List<Utilizador_Contacto>())
+        .OrderBy(c => c.id_contacto)
+        .Take(2)
+        .ToList();
+}
+
+<div class="p-2" data-username="@username">
+    <div class="mb-2">
+        <div class="text-muted small">Username</div>
+        <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(username) ? username : "—")</div>
+    </div>
+
+    <div class="mb-2">
+        <div class="text-muted small">Nome</div>
+        <div class="fw-semibold">@Model.nome</div>
+    </div>
+
+    <div class="mb-2">
+        <div class="text-muted small">Email</div>
+        <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(email) ? email : "—")</div>
+    </div>
+
+    <div>
+        <div class="text-muted small">Contactos</div>
+
+        @if (contactos.Count == 0)
+        {
+            <div class="fw-semibold">—</div>
+        }
+        else
+        {
+            <ul class="mb-0 ps-3">
+                @foreach (var c in contactos)
+                {
+                    <li>
+                        <span class="text-muted">@c.tipo:</span>
+                        <span class="fw-semibold">@c.valor</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
