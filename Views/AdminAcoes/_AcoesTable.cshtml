@@ -87,23 +87,28 @@ else
                 white-space: nowrap;
             }
 
-            .admin-table td:nth-child(3),
-            .admin-table td:nth-child(4),
-            .admin-table td:nth-child(6) {
-                text-align: left;
-            }
+            /* Admin */
+            .admin-table td:nth-child(3) { text-align: left; }
 
-            .admin-table td:nth-child(6) {
-                min-width: 320px;
-                line-height: 1.45;
-            }
+            /* ✅ Utilizador (centrado) */
+            .admin-table td:nth-child(4) { text-align: center; }
 
-        /* badges */
+            /* Motivo */
+            .admin-table td:nth-child(6) { text-align: left; }
+        /* ✅ badges (todas do mesmo tamanho, largura baseada na maior palavra) */
         .badge-state {
             border-radius: 999px;
+            /* mantém altura/aspeto consistente */
             padding: 7px 12px;
             font-weight: 650;
-            display: inline-block;
+            /* ✅ força “botão” alinhado e com largura igual */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            /* ✅ largura igual para todas (ajustada ao maior texto típico) */
+            min-width: 18ch; /* podes subir para 19ch/20ch se precisares */
+
+            white-space: nowrap;
             color: #fff;
             background: #6b7280;
         }

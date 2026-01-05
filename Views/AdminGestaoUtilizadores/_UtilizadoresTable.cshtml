@@ -43,39 +43,53 @@ else
                         <td class="td-soft">@((string.IsNullOrWhiteSpace(uname)) ? $"#{id}" : uname)</td>
                         <td class="td-soft">@em</td>
                         <td class="td-soft">@u.nome</td>
-                        <td class="td-soft text-center">
-                            @if (estado == "bloqueado")
-                            {
-                                <span class="badge badge-bloqueado">bloqueado</span>
-                            }
-                            else
-                            {
-                                <span class="badge badge-ativo">ativo</span>
-                            }
 
-                            @if (isAdminAtual)
-                            {
-                                <span class="badge badge-admin ms-1">admin</span>
-                            }
+                        <!-- ESTADO -->
+                        <td class="td-soft text-center">
+                            <div class="estado-badges">
+                                @if (estado == "bloqueado")
+                                {
+                                    <span class="badge badge-state badge-bloqueado">bloqueado</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-state badge-ativo">ativo</span>
+                                }
+
+                                @if (isAdminAtual)
+                                {
+                                    <span class="badge badge-state badge-admin">admin</span>
+                                }
+                            </div>
                         </td>
+
+                        <!-- AÇÕES -->
                         <td class="td-soft text-center">
                             @if (isAdminAtual)
                             {
-                                <button class="btn btn-sm btn-warning btn-removeradmin" data-id="@id">Remover admin</button>
+                                <button class="btn btn-sm btn-warning btn-removeradmin" data-id="@id">
+                                    Remover admin
+                                </button>
                             }
                             else
                             {
                                 if (estado == "bloqueado" && foiRemovidoAdmin)
                                 {
-                                    <button class="btn btn-sm btn-success btn-recuperaradmin" data-id="@id">Recuperar admin</button>
+                                    <button class="btn btn-sm btn-success btn-recuperaradmin" data-id="@id">
+                                        Recuperar admin
+                                    </button>
                                 }
                                 else if (estado == "ativo")
                                 {
-                                    <button class="btn btn-sm btn-danger btn-bloquear" data-id="@id">Bloquear</button>
+                                    <button class="btn btn-sm btn-danger btn-bloquear" data-id="@id">
+                                        Bloquear
+                                    </button>
                                 }
                                 else
                                 {
-                                    <button class="btn btn-sm btn-success btn-desbloquear" data-id="@id">Desbloquear</button>
+                                    <button class="btn btn-sm btn-success btn-desbloquear" data-id="@id">
+                                        Desbloquear
+                                    </button>
                                 }
                             }
                         </td>
@@ -87,11 +101,13 @@ else
 }
 
 <style>
+    /* ---------- ALERT ---------- */
     .alert-soft {
         border-radius: 14px;
         border: 1px solid rgba(0,0,0,0.06);
     }
 
+    /* ---------- TABLE WRAPPER ---------- */
     .table-soft-wrap {
         border-radius: 14px;
         overflow: hidden;
@@ -99,6 +115,7 @@ else
         box-shadow: 0 8px 22px rgba(0,0,0,0.05);
     }
 
+    /* ---------- HEADERS & CELLS ---------- */
     .th-soft {
         padding: 16px 26px;
         font-weight: 700;
@@ -110,24 +127,64 @@ else
         vertical-align: middle;
     }
 
-    .badge {
-        border-radius: 999px;
+    /* ---------- ESTADO: CENTRADO + BADGES IGUAIS AO MAIOR TEXTO ---------- */
+    .estado-badges {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .badge-state {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        /* ✅ largura igual para todas (cabe "bloqueado") */
+        min-width: 11ch;
         padding: 6px 12px;
+        border-radius: 999px;
         font-weight: 600;
+        color: #fff;
+        white-space: nowrap;
     }
 
     .badge-ativo {
         background: #16a34a;
-        color: #fff;
     }
 
     .badge-bloqueado {
         background: #dc2626;
-        color: #fff;
     }
 
     .badge-admin {
         background: #111;
-        color: #fff;
+    }
+
+    /* ---------- AÇÕES: BOTÕES IGUAIS ---------- */
+    .table-soft td:last-child .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18ch;
+        height: 32px;
+        padding: 0 12px;
+        white-space: nowrap;
+        box-sizing: border-box;
+    }
+
+    /* ---------- CENTRAR TEXTO DAS COLUNAS ---------- */
+
+    /* Username */
+    .table-soft td:nth-child(2),
+    .table-soft th:nth-child(2),
+
+    /* Email */
+    .table-soft td:nth-child(3),
+    .table-soft th:nth-child(3),
+
+    /* Nome */
+    .table-soft td:nth-child(4),
+    .table-soft th:nth-child(4) {
+        text-align: center;
     }
 </style>
