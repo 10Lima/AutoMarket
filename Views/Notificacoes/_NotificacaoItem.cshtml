@@ -1,39 +1,52 @@
-@model AutoMarket.Models.Market.Notificacao_Recebida
+@using AutoMarket.Models.Market
+@model Notificacao_Recebida
 
 @{
     var notif = Model.id_notificacaoNavigation;
     var isLida = string.Equals(Model.estado, "lida", StringComparison.OrdinalIgnoreCase);
+
+    // vêm do controller (Lista/MarcarLida) para manter filtro ativo
+    var estadoAtual = (string)(ViewBag.Estado ?? "nao_lidas");
+    var ordemAtual = (string)(ViewBag.Ordem ?? "recent");
 }
 
-<div class="list-group-item @(isLida ? "" : "fw-semibold")">
-    <div class="d-flex justify-content-between">
-        <div>
-            <div>@notif.titulo</div>
-            @if (!string.IsNullOrWhiteSpace(notif.texto))
+<div class="list-group-item am-notif-item @(isLida ? "is-read" : "is-unread")">
+    <div class="d-flex justify-content-between align-items-start gap-3">
+        <div class="flex-grow-1">
+            <div class="fw-semibold">@notif?.titulo</div>
+
+            @if (!string.IsNullOrWhiteSpace(notif?.texto))
             {
-                <div class="text-muted">@notif.texto</div>
+                <div class="text-muted mt-1">@notif.texto</div>
             }
-            <small class="text-muted">Tipo: @notif.tipo</small>
+
+            <div class="text-muted small mt-2">
+                <i class="bi bi-clock"></i>
+                @Model.data_envio.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                <span class="mx-2">•</span>
+                <span>Tipo: @notif?.tipo</span>
+            </div>
         </div>
 
-        <div class="text-end">
-            <small class="text-muted d-block mb-1">
-                @Model.data_envio.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
-            </small>
-            <span class="badge bg-light text-dark">@Model.estado</span>
-            <span class="badge bg-light text-dark">@Model.canal</span>
+        <div class="text-end d-flex flex-column align-items-end gap-2" style="min-width: 210px;">
+            <div class="d-flex gap-1 flex-wrap justify-content-end">
+                <span class="badge bg-light text-dark border">@Model.estado</span>
+                <span class="badge bg-light text-dark border">@Model.canal</span>
+            </div>
 
             @if (!isLida)
             {
                 <form asp-controller="Notificacoes" asp-action="MarcarLida" method="post"
-                      class="mt-2 d-inline-block"
+                      class="d-inline"
                       data-ajax="true"
                       data-ajax-method="POST"
                       data-ajax-mode="replace"
-                      data-ajax-update="#nr-@Model.id_recebida">
+                      data-ajax-update="#notifContainer">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="idRecebida" value="@Model.id_recebida" />
-                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                    <input type="hidden" name="estado" value="@estadoAtual" />
+                    <input type="hidden" name="ordem" value="@ordemAtual" />
+                    <button type="submit" class="btn btn-sm btn-outline-success">
                         <i class="bi bi-check2"></i> Marcar como lida
                     </button>
                 </form>

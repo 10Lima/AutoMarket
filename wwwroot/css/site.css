@@ -737,3 +737,19 @@ body {
         .am-carros-btngroup .btn:not(:first-child):not(:last-child) {
             border-radius: 0;
         }
+
+
+
+/* ===== Notificações ===== */
+.am-notif-list .list-group-item {
+    transition: all .2s ease;
+}
+
+.am-notif-item.is-unread {
+    background: #f0f9ff;
+    border-left: 4px solid #3b82f6;
+}
+
+.am-notif-item.is-read {
+    opacity: .75;
+}

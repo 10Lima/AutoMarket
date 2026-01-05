@@ -632,15 +632,16 @@ public class AnunciosController : Controller
             var agora = DateTime.UtcNow;
 
             // =========================================================
-            // 0) ENCOMENDAS: permitir pausar só se TODAS forem "pendente"
+            // 0) ENCOMENDAS: permitir pausar desde que NÃO exista "pago"
             // =========================================================
             var encomendas = await _marketDb.Encomenda
                 .Where(e => e.id_anuncio == id)
                 .ToListAsync();
 
-            if (encomendas.Any(e => !string.Equals(e.estado, "pendente", StringComparison.OrdinalIgnoreCase)))
+            // ✅ aqui é memória (List), StringComparison pode existir
+            if (encomendas.Any(e => string.Equals(e.estado, "pago", StringComparison.OrdinalIgnoreCase)))
             {
-                TempData["Erro"] = "Não é possível pausar este anúncio porque existem encomendas que não estão no estado 'pendente'.";
+                TempData["Msg"] = "Não é possível pausar este anúncio porque existe uma encomenda no estado 'pago'.";
                 return RedirectToAction(nameof(Meus), new { estado = anuncio.estado });
             }
 
@@ -651,24 +652,31 @@ public class AnunciosController : Controller
                 .ToList();
 
             // ===== 1) Capturar afetados (reserva + visitas) ANTES de mexer em estados =====
+            // ✅ EF Core: sem StringComparison (ToLower() traduz)
             var reservaAtivaInfo = await _marketDb.Reserva
                 .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.id_anuncio == id && r.estado == "ativa");
+                .FirstOrDefaultAsync(r =>
+                    r.id_anuncio == id &&
+                    ((r.estado ?? "").ToLower() == "ativa"));
 
             var reservadores = (reservaAtivaInfo != null)
                 ? new List<int> { reservaAtivaInfo.id_utilizador }
                 : new List<int>();
 
+            // ✅ EF Core: sem StringComparison
             var visitantes = await _marketDb.Visita
                 .AsNoTracking()
-                .Where(v => v.id_anuncio == id && (v.estado == "pendente" || v.estado == "agendada"))
+                .Where(v =>
+                    v.id_anuncio == id &&
+                    (
+                        ((v.estado ?? "").ToLower() == "pendente") ||
+                        ((v.estado ?? "").ToLower() == "agendada")
+                    ))
                 .Select(v => v.id_utilizador)
                 .Distinct()
                 .ToListAsync();
 
-            // ✅ Não removemos interseção: se tiver reserva+visita recebe 2 notif.
-
-            // ===== 2) Cancelar reserva ativa =====
+            // ===== 2) Cancelar reserva ativa (se existir) =====
             if (reservaAtivaInfo != null)
             {
                 var reservaTracked = await _marketDb.Reserva
@@ -679,16 +687,23 @@ public class AnunciosController : Controller
             }
 
             // ===== 3) Cancelar visitas pendente/agendada =====
+            // ✅ EF Core: sem StringComparison
             var visitas = await _marketDb.Visita
-                .Where(v => v.id_anuncio == id && (v.estado == "pendente" || v.estado == "agendada"))
+                .Where(v =>
+                    v.id_anuncio == id &&
+                    (
+                        ((v.estado ?? "").ToLower() == "pendente") ||
+                        ((v.estado ?? "").ToLower() == "agendada")
+                    ))
                 .ToListAsync();
 
             foreach (var v in visitas)
                 v.estado = "cancelada";
 
-            // ===== 4) Cancelar encomendas pendentes (set estado = "cancelado") =====
-            foreach (var e in encomendas)
-                e.estado = "cancelado"; // CHECK: (pendente|pago|cancelado)
+            // ===== 4) Cancelar encomendas pendentes (apenas as pendentes) =====
+            // ✅ aqui é memória (List), ok
+            foreach (var e in encomendas.Where(e => string.Equals(e.estado, "pendente", StringComparison.OrdinalIgnoreCase)))
+                e.estado = "cancelado";
 
             // ===== 5) Pausar anúncio =====
             anuncio.estado = "inativo";
@@ -702,7 +717,7 @@ public class AnunciosController : Controller
                 data_acao = agora
             });
 
-            // ===== 6) Notificações (3 tipos de mensagem) =====
+            // ===== 6) Notificações =====
             var acao = "pausado";
             var tituloBase = string.IsNullOrWhiteSpace(anuncio.titulo) ? "Anúncio" : anuncio.titulo.Trim();
 
@@ -752,10 +767,13 @@ public class AnunciosController : Controller
             }
 
             await _marketDb.SaveChangesAsync();
+            TempData["Msg"] = "Anúncio pausado.";
         }
 
         return RedirectToAction(nameof(Meus), new { estado = "inativo" });
     }
+
+
 
 
 
@@ -846,8 +864,8 @@ public class AnunciosController : Controller
         if (idUtilizador is null) return Unauthorized();
 
         var anuncio = await _marketDb.Anuncio
-            .Include(a => a.id_veiculoNavigation)
-            .FirstOrDefaultAsync(a => a.id_anuncio == id && a.id_vendedor == idUtilizador.Value);
+            .Include(x => x.id_veiculoNavigation)
+            .FirstOrDefaultAsync(x => x.id_anuncio == id && x.id_vendedor == idUtilizador.Value);
 
         if (anuncio == null) return NotFound();
 
@@ -855,17 +873,17 @@ public class AnunciosController : Controller
         var veiculo = anuncio.id_veiculoNavigation;
 
         // =========================================================
-        // 0) ENCOMENDAS: permitir remover só se TODAS forem "pendente"
-        //    (e como é delete físico, temos de APAGAR as pendentes)
+        // 0) ENCOMENDAS: permitir remover desde que NÃO exista "pago"
         // =========================================================
         var encomendas = await _marketDb.Encomenda
             .Where(e => e.id_anuncio == idAnuncio)
             .ToListAsync();
 
-        if (encomendas.Any(e => !string.Equals(e.estado, "pendente", StringComparison.OrdinalIgnoreCase)))
+        // ✅ aqui é memória (List), StringComparison pode existir
+        if (encomendas.Any(e => string.Equals(e.estado, "pago", StringComparison.OrdinalIgnoreCase)))
         {
-            TempData["Erro"] = "Não é possível remover este anúncio porque existem encomendas que não estão no estado 'pendente'.";
-            return RedirectToAction(nameof(Detalhes), new { id });
+            TempData["Msg"] = "Não é possível remover este anúncio porque existe uma encomenda no estado 'pago'.";
+            return RedirectToAction(nameof(Meus), new { estado = anuncio.estado });
         }
 
         var compradoresEncomendaPendente = encomendas
@@ -875,21 +893,25 @@ public class AnunciosController : Controller
             .ToList();
 
         // ===== 1) Capturar afetados (reserva + visitas) ANTES do delete/cascade =====
+        // ✅ EF Core: sem StringComparison
         var reservadores = await _marketDb.Reserva
             .AsNoTracking()
-            .Where(r => r.id_anuncio == idAnuncio && r.estado == "ativa")
+            .Where(r => r.id_anuncio == idAnuncio && ((r.estado ?? "").ToLower() == "ativa"))
             .Select(r => r.id_utilizador)
             .Distinct()
             .ToListAsync();
 
+        // ✅ EF Core: sem StringComparison
         var visitantes = await _marketDb.Visita
             .AsNoTracking()
-            .Where(v => v.id_anuncio == idAnuncio && (v.estado == "pendente" || v.estado == "agendada"))
+            .Where(v => v.id_anuncio == idAnuncio &&
+                (
+                    ((v.estado ?? "").ToLower() == "pendente") ||
+                    ((v.estado ?? "").ToLower() == "agendada")
+                ))
             .Select(v => v.id_utilizador)
             .Distinct()
             .ToListAsync();
-
-        // ✅ Não removemos interseção: se tiver reserva+visita recebe 2 notif.
 
         await using var tx = await _marketDb.Database.BeginTransactionAsync();
 
@@ -908,7 +930,6 @@ public class AnunciosController : Controller
             var acao = "removido";
             var tituloBase = string.IsNullOrWhiteSpace(anuncio.titulo) ? "Anúncio" : anuncio.titulo.Trim();
 
-            // 2.1) Encomenda pendente cancelada
             if (compradoresEncomendaPendente.Count > 0)
             {
                 var payloadEnc = new { v = 1, origem = "encomenda", acao = "remover", id_anuncio = idAnuncio };
@@ -923,7 +944,6 @@ public class AnunciosController : Controller
                 );
             }
 
-            // 2.2) Reserva cancelada
             if (reservadores.Count > 0)
             {
                 var payloadReserva = new { v = 1, origem = "remover", id_anuncio = idAnuncio, motivo = "reserva" };
@@ -938,7 +958,6 @@ public class AnunciosController : Controller
                 );
             }
 
-            // 2.3) Visita cancelada
             if (visitantes.Count > 0)
             {
                 var payloadVisita = new { v = 1, origem = "remover", id_anuncio = idAnuncio, motivo = "visita" };
@@ -953,7 +972,7 @@ public class AnunciosController : Controller
                 );
             }
 
-            // ===== 3) APAGAR encomendas pendentes (senão FK NO_ACTION impede delete do anúncio) =====
+            // ===== 3) APAGAR TODAS as encomendas (não pagas) para não bloquear FK NO_ACTION =====
             if (encomendas.Count > 0)
             {
                 _marketDb.Encomenda.RemoveRange(encomendas);
@@ -977,10 +996,7 @@ public class AnunciosController : Controller
             if (Directory.Exists(pastaImagens))
             {
                 try { Directory.Delete(pastaImagens, recursive: true); }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[AVISO] Erro ao apagar pasta {pastaImagens}: {ex.Message}");
-                }
+                catch (Exception ex) { Console.WriteLine($"[AVISO] Erro ao apagar pasta {pastaImagens}: {ex.Message}"); }
             }
 
             TempData["Msg"] = "Anúncio removido.";
@@ -989,10 +1005,12 @@ public class AnunciosController : Controller
         catch (Exception ex)
         {
             await tx.RollbackAsync();
-            TempData["Erro"] = $"Erro ao remover anúncio: {ex.Message}";
+            TempData["Msg"] = $"Erro ao remover anúncio: {ex.Message}";
             return RedirectToAction(nameof(Meus), new { estado = "ativo" });
         }
     }
+
+
 
 
 
@@ -2303,7 +2321,8 @@ public class AnunciosController : Controller
         // ✅ Notificação para o VENDEDOR: reserva cancelada pelo comprador
         await AdicionarNotif_ReservaCancelada_VendedorAsync(reserva, anuncio);
 
-        _marketDb.Reserva.Remove(reserva);
+        reserva.estado = "cancelada";
+        _marketDb.Reserva.Update(reserva); // opcional (podes até não pôr, porque a entidade já está tracked)
 
         if (string.Equals(anuncio.estado, "reservado", StringComparison.OrdinalIgnoreCase))
         {

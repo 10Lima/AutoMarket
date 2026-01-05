@@ -22,32 +22,32 @@
     <ul class="nav nav-tabs am-tabs mb-3" id="visitasTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" type="button" data-estado="agendada">
-                Agendada <span class="am-tab-count">(@cAg)</span>
+                Agendada <span class="am-tab-count" data-count-for="agendada">(@cAg)</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" type="button" data-estado="pendente">
-                Pendente <span class="am-tab-count">(@cPe)</span>
+                Pendente <span class="am-tab-count" data-count-for="pendente">(@cPe)</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" type="button" data-estado="realizada">
-                Realizada <span class="am-tab-count">(@cReal)</span>
+                Realizada <span class="am-tab-count" data-count-for="realizada">(@cReal)</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" type="button" data-estado="rejeitada">
-                Rejeitada <span class="am-tab-count">(@cRej)</span>
+                Rejeitada <span class="am-tab-count" data-count-for="rejeitada">(@cRej)</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" type="button" data-estado="cancelada">
-                Cancelada <span class="am-tab-count">(@cCan)</span>
+                Cancelada <span class="am-tab-count" data-count-for="cancelada">(@cCan)</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" type="button" data-estado="todos">
-                Todos <span class="am-tab-count">(@cAll)</span>
+                Todos <span class="am-tab-count" data-count-for="todos">(@cAll)</span>
             </button>
         </li>
     </ul>
@@ -119,10 +119,42 @@
 
             ordemSel.addEventListener("change", submit);
 
+            // ✅ NOVO: Função para atualizar contadores das tabs
+            async function refreshTabCounts() {
+                try {
+                    const url = '@Url.Action("CountsGestaoVendedor", "Visitas")';
+                    const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                    if (!resp.ok) return;
+
+                    const data = await resp.json();
+
+                    // ✅ Atualizar cada contador (agendada, pendente, etc.)
+                    document.querySelectorAll('.am-tab-count[data-count-for]').forEach(el => {
+                        const k = el.getAttribute('data-count-for');
+                        if (!k || typeof data[k] === "undefined") return;
+                        el.textContent = `(${data[k]})`;
+                    });
+                } catch (err) {
+                    console.warn('[refreshTabCounts] Erro ao atualizar contadores:', err);
+                }
+            }
+
+            // ✅ NOVO: Hook jQuery AJAX para atualizar contadores após cada ação
+            if (window.jQuery) {
+                $(document).on('ajaxComplete', function (e, xhr, settings) {
+                    const u = (settings && settings.url) ? settings.url : "";
+                    // ✅ Atualiza após qualquer AJAX relacionado com Visitas
+                    if (u.includes("/Visitas/")) {
+                        refreshTabCounts();
+                    }
+                });
+            }
+
+            // ✅ Inicialização: submit inicial + atualiza contadores
             document.addEventListener("DOMContentLoaded", () => {
-                // Default: Agendada
                 setActive(estadoVal.value || "agendada");
                 submit();
+                refreshTabCounts(); // ✅ Garante contadores atualizados ao carregar
             });
         })();
     </script>

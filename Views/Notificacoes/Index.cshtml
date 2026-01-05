@@ -1,61 +1,142 @@
-@model List<AutoMarket.Models.Market.Notificacao_Recebida>
+@using AutoMarket.Models.Market
+@model List<Notificacao_Recebida>
 
 @{
     ViewData["Title"] = "Notificações";
     bool anonimo = (ViewBag.Anonimo as bool?) == true;
+
+    var cNaoLidas = (int)(ViewBag.CountNaoLidas ?? 0);
+    var cLidas = (int)(ViewBag.CountLidas ?? 0);
+    var cTodas = (int)(ViewBag.CountTodas ?? (cNaoLidas + cLidas));
+
+    var defaultEstado = (string)(ViewBag.DefaultEstado ?? "nao_lidas"); // default: não lidas
+    var defaultOrdem = (string)(ViewBag.DefaultOrdem ?? "recent");
 }
 
-<h2>Notificações</h2>
+<div class="container mt-3 am-scale-lg">
 
-@if (anonimo)
-{
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i>
-        Para veres as tuas notificações, faz login.
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Notificações</h2>
     </div>
-}
-else if (Model == null || Model.Count == 0)
-{
-    <div class="alert alert-secondary">
-        <i class="bi bi-inbox"></i>
-        Ainda não tens notificações.
-    </div>
-}
-else
-{
-    <div class="list-group" id="notifList">
-        @foreach (var n in Model)
-        {
-            <div id="nr-@n.id_recebida">
-                @await Html.PartialAsync("_NotificacaoItem", n)
+
+    @if (anonimo)
+    {
+        <div class="alert alert-info d-flex align-items-center gap-2 mb-0">
+            <i class="bi bi-info-circle"></i>
+            <div class="flex-grow-1">
+                Para veres as tuas notificações, faz login.
             </div>
-        }
-    </div>
-}
-
-<style>
-    .list-group-item {
-        transition: all 0.3s ease;
+            <a class="btn btn-sm btn-outline-dark" asp-area="Identity" asp-page="/Account/Login">
+                Login
+            </a>
+        </div>
     }
+    else
+    {
+        <!-- Tabs (estilo do projeto) -->
+        <ul class="nav nav-tabs am-tabs mb-3" id="notifTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" data-estado="nao_lidas">
+                    Não lidas <span class="am-tab-count" id="tabNaoLidas">(@cNaoLidas)</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" data-estado="lidas">
+                    Lidas <span class="am-tab-count" id="tabLidas">(@cLidas)</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" data-estado="todas">
+                    Todas <span class="am-tab-count" id="tabTodas">(@cTodas)</span>
+                </button>
+            </li>
+        </ul>
 
-    .list-group-item.fw-semibold {
-        background-color: #f0f9ff;
-        border-left: 4px solid #3b82f6;
-    }
+        <!-- Filtros (AJAX) -->
+        <form id="notifForm"
+              asp-controller="Notificacoes"
+              asp-action="Lista"
+              method="get"
+              data-ajax="true"
+              data-ajax-method="GET"
+              data-ajax-update="#notifContainer"
+              data-ajax-mode="replace"
+              data-ajax-loading="#notifLoading"
+              class="row g-2 align-items-end mb-3">
 
-    .list-group-item:not(.fw-semibold) {
-        opacity: 0.7;
-    }
+            <input type="hidden" name="estado" id="estadoVal" value="@defaultEstado" />
 
-    .badge {
-        font-size: 0.75rem;
-    }
+            <div class="col-12 col-md-4">
+                <label class="form-label mb-1">Ordenação</label>
+                <select class="form-select" name="ordem" id="ordemSel">
+                    <option value="recent" selected="@(defaultOrdem == "recent")">Mais recentes</option>
+                    <option value="old" selected="@(defaultOrdem == "old")">Mais antigas</option>
+                </select>
+            </div>
+        </form>
 
-    .btn-sm {
-        font-size: 0.8rem;
+        <div id="notifLoading" class="alert alert-secondary d-none">
+            A carregar notificações…
+        </div>
+
+        <div id="notifContainer">
+            <div class="alert alert-secondary">A carregar notificações…</div>
+        </div>
     }
-</style>
+</div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const form = document.getElementById("notifForm");
+            if (!form) return;
+
+            const estadoVal = document.getElementById("estadoVal");
+            const ordemSel = document.getElementById("ordemSel");
+            const tabs = document.getElementById("notifTabs");
+            const container = document.getElementById("notifContainer");
+
+            const setActive = (estado) => {
+                tabs.querySelectorAll(".nav-link").forEach(b => {
+                    b.classList.toggle("active", b.dataset.estado === estado);
+                });
+            };
+
+            const submit = () => form.requestSubmit();
+
+            tabs.addEventListener("click", (ev) => {
+                const btn = ev.target.closest(".nav-link");
+                if (!btn) return;
+
+                const st = btn.dataset.estado;
+                estadoVal.value = st;
+                setActive(st);
+                submit();
+            });
+
+            ordemSel.addEventListener("change", submit);
+
+            function syncCountsFromMeta() {
+                const meta = document.getElementById("notifMeta");
+                if (!meta) return;
+
+                const nl = meta.getAttribute("data-nao-lidas");
+                const l  = meta.getAttribute("data-lidas");
+                const t  = meta.getAttribute("data-todas");
+
+                if (nl != null) document.getElementById("tabNaoLidas").textContent = `(${nl})`;
+                if (l  != null) document.getElementById("tabLidas").textContent    = `(${l})`;
+                if (t  != null) document.getElementById("tabTodas").textContent   = `(${t})`;
+            }
+
+            // sempre que o partial é substituído
+            const obs = new MutationObserver(() => syncCountsFromMeta());
+            obs.observe(container, { childList: true, subtree: true });
+
+            document.addEventListener("DOMContentLoaded", () => {
+                setActive(estadoVal.value || "nao_lidas");
+                submit();
+            });
+        })();
+    </script>
 }
